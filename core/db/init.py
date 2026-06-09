@@ -3,7 +3,7 @@ def initDatabase():
     from pathlib import Path
 
     # 确保目录存在
-    dataDir = Path(__file__).parent.parent.parent / "data"
+    dataDir = Path.cwd() / "data"
     dataDir.mkdir(parents=True, exist_ok=True)
     databasePath = dataDir / "data.db"
 

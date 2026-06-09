@@ -17,6 +17,15 @@ async def health():
 @app.post("/api/v1/register")
 async def register(username: str, phone:str,identity:str):
     logger.info(f"username:{username},phone:{phone},identity:{identity}")
+    from pathlib import Path
+    from core.db.CRUD import create_record
+    databasePath = Path.cwd() / "data" / "data.db"
+    try:
+        create_record(databasePath, "user", {"username": username, "phone": phone, "identity": identity})
+        return {"message": "注册成功"}
+    except Exception as e:
+        logger.error(e)
+        return {"message": "注册失败"}
 
 if __name__ == "__main__":
     import uvicorn
