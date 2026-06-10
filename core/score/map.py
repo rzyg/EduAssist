@@ -1,7 +1,7 @@
 from pathlib import Path
 from loguru import logger
 from core.score.models import StreamingMap
-from openpyxl import load_workbook, Workbook
+from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 
@@ -110,4 +110,76 @@ def build_score_mapping(ws: Worksheet) -> StreamingMap:
             logger.debug(f"未找到选考科目: {subject}，跳过")
 
     logger.info(f"列映射构建完成，共 {len(mapping)} 个字段，选考科目: {found_subjects}")
+    return mapping
+
+
+def build_line_mapping(ws: Worksheet) -> StreamingMap:
+    """
+    根据工作表构建分数线映射
+    Args:
+        ws: Excel 工作表
+
+    Returns:
+        StreamingMap 实例，包含所有字段的列号
+    """
+    mapping = StreamingMap()
+    physics_line = getPosition(ws, "物理", 1, 1)
+    history_line = getPosition(ws, "历史", 1, 1)
+
+    # 判断是否分科
+    if physics_line[1] == history_line[1]:
+        # 未分科
+        logger.debug(f"找到物理/历史列号: {physics_line}/{history_line}，判断为未分科")
+        for subject in [
+            "语文",
+            "数学",
+            "英语",
+            "物理",
+            "历史",
+            "生物",
+            "化学",
+            "地理",
+            "政治",
+            "小语种",
+        ]:
+            mapping[f"{subject}"] = getPosition(ws, subject, 1, 1)[0]
+        for Line in ["清北线", "985线", "211线", "特控线", "本科线"]:
+            mapping[f"{Line}"] = getPosition(ws, Line, 1, 1)[1]
+    elif physics_line[1] != history_line[1]:
+        # 分科
+        logger.debug(f"物理/历史列号不同: {physics_line}/{history_line}，判断为分科")
+        history_col = getPosition(ws, "历史", 1, 1, 1)[1]
+        for subject in [
+            "语文",
+            "数学",
+            "英语",
+            "物理",
+            "生物",
+            "化学",
+            "地理",
+            "政治",
+            "小语种",
+        ]:
+            mapping[f"物理{subject}"] = getPosition(
+                ws, subject, 1, 1, None, history_col - 1
+            )[0]
+        for Line in ["清北线", "985线", "211线", "特控线", "本科线"]:
+            mapping[f"物理{Line}"] = getPosition(ws, Line, 1, 1)[1]
+        for subject in [
+            "语文",
+            "数学",
+            "英语",
+            "历史",
+            "生物",
+            "化学",
+            "地理",
+            "政治",
+            "小语种",
+        ]:
+            mapping[f"历史{subject}"] = getPosition(ws, subject, 1, history_col)[0]
+        for Line in ["清北线", "985线", "211线", "特控线", "本科线"]:
+            mapping[f"历史{Line}"] = getPosition(ws, Line, 1, history_col)[1]
+    elif physics_line or history_line is None:
+        # 何意味
+        raise ValueError("Excel 表中缺少必要字段: 物理/历史")
     return mapping
