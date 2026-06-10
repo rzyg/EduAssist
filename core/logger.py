@@ -17,7 +17,7 @@ def setup_logging():
     )
 
     # 文件输出（生产环境）
-    log_dir = Path("logs")
+    log_dir = Path.cwd() / "logs"
     log_dir.mkdir(exist_ok=True)
 
     logger.add(
