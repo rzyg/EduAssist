@@ -9,14 +9,15 @@ def initDatabase():
 
     with sqlite3.connect(databasePath) as conn:
         # 创建用户数据表
-        conn.execute('''
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS user (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
                 phone TEXT NOT NULL,
                 identity TEXT NOT NULL
             )
-        ''')
+        """)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     initDatabase()

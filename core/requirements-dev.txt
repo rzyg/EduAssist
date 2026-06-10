@@ -1,6 +1,7 @@
 # ========== 核心框架 ==========
 fastapi==0.115.12          # API 服务框架
 uvicorn[standard]==0.34.2  # ASGI 服务器
+python-multipart
 
 # ========== 异步/系统 ==========
 aiosqlite==0.21.0          # 异步 SQLite（本地任务队列）
