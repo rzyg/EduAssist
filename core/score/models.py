@@ -68,21 +68,23 @@ class StreamingMap:
     """
 
     # 存储字段名 -> 列号的映射
-    _map: Dict[str, int] = field(default_factory=dict)
+    _map: Dict[str, int | float] = field(default_factory=dict)
 
-    def set(self, field_name: str, column: int) -> None:
+    def set(self, field_name: str, column: int | float) -> None:
         """
         设置字段的列号
         """
         self._map[field_name] = column
 
-    def get(self, field_name: str, default: Optional[int] = None) -> Optional[int]:
+    def get(
+        self, field_name: str, default: Optional[int | float] = None
+    ) -> Optional[int | float]:
         """
         获取字段的列号
         """
         return self._map.get(field_name, default)
 
-    def update(self, mappings: Dict[str, int]) -> None:
+    def update(self, mappings: Dict[str, int | float]) -> None:
         """
         批量设置映射
         """
@@ -100,7 +102,7 @@ class StreamingMap:
         """
         return field_name in self._map
 
-    def get_all(self) -> Dict[str, int]:
+    def get_all(self) -> Dict[str, int | float]:
         """
         获取所有映射（返回副本）
         """
@@ -112,13 +114,13 @@ class StreamingMap:
         """
         self._map.clear()
 
-    def __getitem__(self, field_name: str) -> int:
+    def __getitem__(self, field_name: str) -> int | float:
         """
         支持下标访问: mapping["姓名"]
         """
         return self._map[field_name]
 
-    def __setitem__(self, field_name: str, column: int) -> None:
+    def __setitem__(self, field_name: str, column: int | float) -> None:
         """
         支持下表赋值: mapping["姓名"] = 3
         """

@@ -21,8 +21,8 @@ def getPosition(
     context: str,
     start_row: int = 1,
     start_col: int = 1,
-    end_row: int = None,
-    end_col: int = None,
+    end_row: int = 0,
+    end_col: int = 0,
 ):
     """
     在工作表中查询某内容的坐标（包含匹配）
@@ -36,9 +36,9 @@ def getPosition(
     :return: [row_idx, col_idx] 或 None
     """
     # 设置默认结束范围
-    if end_row is None:
+    if end_row == 0:
         end_row = ws.max_row
-    if end_col is None:
+    if end_col == 0:
         end_col = ws.max_column
 
     # 限制搜索范围，避免扫描整个表
@@ -53,7 +53,7 @@ def getPosition(
     return None
 
 
-def build_score_mapping(ws: Worksheet) -> StreamingMap:
+def build_score_mapping(ws: Worksheet):
     """
     根据工作表构建列映射
     自动适配赋分/非赋分：优先匹配赋分列，不存在则匹配原始分列
@@ -64,6 +64,7 @@ def build_score_mapping(ws: Worksheet) -> StreamingMap:
     Returns:
         StreamingMap 实例，包含所有字段的列号
     """
+    global streaming
     mapping = StreamingMap()
 
     class_name = getPosition(ws, "班", 1, 1, 5)
@@ -110,7 +111,18 @@ def build_score_mapping(ws: Worksheet) -> StreamingMap:
             logger.debug(f"未找到选考科目: {subject}，跳过")
 
     logger.info(f"列映射构建完成，共 {len(mapping)} 个字段，选考科目: {found_subjects}")
-    return mapping
+
+    # 判断分科
+    if "物理" and "历史" in found_subjects:
+        logger.warning("未分科")
+        streaming = "false"
+    elif "物理" in found_subjects and "历史" not in found_subjects:
+        logger.warning("物理分科")
+        streaming = "physics"
+    elif "物理" not in found_subjects and "历史" in found_subjects:
+        logger.warning("历史分科")
+        streaming = "history"
+    return mapping, streaming
 
 
 def get_lines(ws: Worksheet) -> StreamingMap:
@@ -126,44 +138,35 @@ def get_lines(ws: Worksheet) -> StreamingMap:
     line_map = StreamingMap()
     physics_line = getPosition(ws, "物理", 1, 1)
     history_line = getPosition(ws, "历史", 1, 1)
-
+    subject_list = [
+        "总分",
+        "语文",
+        "数学",
+        "英语",
+        "物理",
+        "历史",
+        "生物",
+        "化学",
+        "地理",
+        "政治",
+        "小语种",
+    ]
     # 判断是否分科
     if physics_line[1] == history_line[1]:
         # 未分科
         logger.debug(f"找到物理/历史列号: {physics_line}/{history_line}，判断为未分科")
-        for subject in [
-            "语文",
-            "数学",
-            "英语",
-            "物理",
-            "历史",
-            "生物",
-            "化学",
-            "地理",
-            "政治",
-            "小语种",
-        ]:
-            mapping[f"{subject}"] = getPosition(ws, subject, 1, 1)[0]
+
+        for subject in subject_list:
+            mapping[f"{subject}"] = getPosition(ws, subject, 2, 1)[0]
         for line in ["清北线", "985线", "211线", "特控线", "本科线"]:
             col = getPosition(ws, line, 1, 1)[1]
             mapping[f"{line}"] = col
             # 提取分数线实际数值：遍历所有学科行，提取该列的值
-            for subject in [
-                "语文",
-                "数学",
-                "英语",
-                "物理",
-                "历史",
-                "生物",
-                "化学",
-                "地理",
-                "政治",
-                "小语种",
-            ]:
+            for subject in subject_list:
                 row = mapping.get(f"{subject}")
-                if row is not None:
+                if row is not None and isinstance(row, int) and row > 0:
                     value = ws.cell(row=row, column=col).value
-                    line_map[f"{subject}_{line}"] = value
+                    line_map[f"{subject}_{line}"] = to_float(value)
 
     elif physics_line[1] != history_line[1]:
         # 分科
@@ -171,73 +174,46 @@ def get_lines(ws: Worksheet) -> StreamingMap:
         history_col = getPosition(ws, "历史", 1, 1, 1)[1]
 
         # 物理方向
-        for subject in [
-            "语文",
-            "数学",
-            "英语",
-            "物理",
-            "生物",
-            "化学",
-            "地理",
-            "政治",
-            "小语种",
-        ]:
+        subject_list.remove("历史")
+        for subject in subject_list:
             mapping[f"物理{subject}"] = getPosition(
-                ws, subject, 1, 1, None, history_col - 1
+                ws, subject, 2, 1, 0, history_col - 1
             )[0]
         for line in ["清北线", "985线", "211线", "特控线", "本科线"]:
             col = getPosition(ws, line, 1, 1)[1]
             mapping[f"物理{line}"] = col
             # 提取物理方向分数线实际数值
-            for subject in [
-                "语文",
-                "数学",
-                "英语",
-                "物理",
-                "生物",
-                "化学",
-                "地理",
-                "政治",
-                "小语种",
-            ]:
+            for subject in subject_list:
                 row = mapping.get(f"物理{subject}")
-                if row is not None:
+                if row is not None and isinstance(row, int) and row > 0:
                     value = ws.cell(row=row, column=col).value
-                    line_map[f"物理{subject}_{line}"] = value
+                    line_map[f"物理{subject}_{line}"] = to_float(value)
 
         # 历史方向
-        for subject in [
-            "语文",
-            "数学",
-            "英语",
-            "历史",
-            "生物",
-            "化学",
-            "地理",
-            "政治",
-            "小语种",
-        ]:
-            mapping[f"历史{subject}"] = getPosition(ws, subject, 1, history_col)[0]
+
+        subject_list.remove("物理")
+        subject_list.append("历史")
+        for subject in subject_list:
+            mapping[f"历史{subject}"] = getPosition(ws, subject, 2, history_col)[0]
         for line in ["清北线", "985线", "211线", "特控线", "本科线"]:
             col = getPosition(ws, line, 1, history_col)[1]
             mapping[f"历史{line}"] = col
             # 提取历史方向分数线实际数值
-            for subject in [
-                "语文",
-                "数学",
-                "英语",
-                "历史",
-                "生物",
-                "化学",
-                "地理",
-                "政治",
-                "小语种",
-            ]:
+            for subject in subject_list:
                 row = mapping.get(f"历史{subject}")
-                if row is not None:
+                if row is not None and isinstance(row, int) and row > 0:
                     value = ws.cell(row=row, column=col).value
-                    line_map[f"历史{subject}_{line}"] = value
+                    line_map[f"历史{subject}_{line}"] = to_float(value)
 
     elif physics_line is None or history_line is None:
         raise ValueError("Excel 表中缺少必要字段: 物理/历史")
     return line_map
+
+
+def to_float(value, default=0):
+    """安全转换为浮点数"""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        logger.warning(f"无法转换为浮点数: {value}")
+        return default
