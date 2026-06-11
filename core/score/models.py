@@ -8,25 +8,19 @@ class SubjectScore(NamedTuple):
     """单科成绩和排名"""
 
     score: float
-    class_rank: int
-    school_rank: int
+    class_rank: Any
+    school_rank: Any
 
 
 class Student:
     def __init__(
         self,
-        student_class: int,
+        student_class: Any,
         name: str,
-        total: float,
-        total_class_rank: int,
-        total_school_rank: int,
         subjects: Dict[str, SubjectScore],
     ):
         self.student_class = student_class
         self.name = name
-        self.total = total
-        self.total_class_rank = total_class_rank
-        self.total_school_rank = total_school_rank
         self.subjects = subjects  # {"语文": SubjectScore(120, 5, 20), ...}
 
     # 便捷属性：快速获取某科成绩
