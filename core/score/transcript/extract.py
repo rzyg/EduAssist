@@ -7,13 +7,11 @@ from loguru import logger
 def extract_score(
     score_sheet: Worksheet,
     map_list: StreamingMap,
-    streaming: str,
 ) -> List[Student]:
     """
     处理学生成绩
     :param score_sheet: 成绩单工作表
     :param map_list: 成绩单列映射表
-    :param streaming: 分科类型 ("物理分科", "历史分科", "false")
     :return: 学生对象列表
     """
     logger.info("开始提取学生成绩")
@@ -30,14 +28,6 @@ def extract_score(
         "政治",
         "地理",
     ]
-    # 根据分科类型确定需要提取的科目
-    if streaming == "physics":
-        logger.debug("物理方向")
-        required_subjects.remove("历史")
-    elif streaming == "history":
-        logger.debug("历史方向")
-        required_subjects.remove("物理")
-
     # 遍历每一行数据
     for row in range(2, score_sheet.max_row + 1):
         # 获取基础信息
@@ -53,6 +43,11 @@ def extract_score(
 
         # 处理
         for subject in required_subjects:
+            try:
+                column = map_list[subject]
+            except KeyError:
+                logger.warning(f"{subject} 列未找到")
+                continue
             score = float(
                 score_sheet.cell(row=row, column=int(map_list[subject])).value or 0
             )
@@ -89,12 +84,16 @@ def extract_score(
                     class_rank=small_class_rank,
                     school_rank=small_school_rank,
                 )
-
+        # 读取选科
+        selection = (
+            str(score_sheet.cell(row=row, column=int(map_list["选科"])).value) or ""
+        )
         # 创建学生对象并添加到列表
         student = Student(
             student_class=student_class,
             name=student_name,
             subjects=subjects,
+            selection=selection,
         )
         student_list.append(student)
 

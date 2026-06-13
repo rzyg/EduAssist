@@ -64,7 +64,6 @@ def build_score_mapping(ws: Worksheet):
     Returns:
         StreamingMap 实例，包含所有字段的列号
     """
-    global streaming
     mapping = StreamingMap()
 
     class_name = getPosition(ws, "班", 1, 1, 5)
@@ -76,6 +75,12 @@ def build_score_mapping(ws: Worksheet):
     if name is None:
         raise ValueError("Excel 表中缺少姓名字段")
     mapping["姓名"] = name[1]
+
+    selection_pos = getPosition(ws, "选科", 1, 1, 5)
+    if selection_pos is None:
+        logger.warning("Excel 表中缺少选科字段")
+    else:
+        mapping["选科"] = selection_pos[1]
 
     # ========== 1. 总分（自动适配赋分/原始）==========
     # getPosition 会优先查"赋分总分"，没有则查"总分"
@@ -117,17 +122,7 @@ def build_score_mapping(ws: Worksheet):
 
     logger.info(f"列映射构建完成，共 {len(mapping)} 个字段，选考科目: {found_subjects}")
 
-    # 判断分科
-    if "物理" and "历史" in found_subjects:
-        logger.debug("未分科")
-        streaming = "false"
-    elif "物理" in found_subjects and "历史" not in found_subjects:
-        logger.debug("物理分科")
-        streaming = "physics"
-    elif "物理" not in found_subjects and "历史" in found_subjects:
-        logger.warning("历史分科")
-        streaming = "history"
-    return mapping, streaming
+    return mapping
 
 
 def get_lines(ws: Worksheet) -> StreamingMap:

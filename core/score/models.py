@@ -2,6 +2,7 @@ import json
 from typing import Dict, NamedTuple, Optional, Any
 from pathlib import Path
 from dataclasses import dataclass, field
+from loguru import logger
 
 
 class SubjectScore(NamedTuple):
@@ -18,22 +19,24 @@ class Student:
         student_class: Any,
         name: str,
         subjects: Dict[str, SubjectScore],
+        selection: str,
     ):
         self.student_class = student_class
         self.name = name
         self.subjects = subjects  # {"语文": SubjectScore(120, 5, 20), ...}
+        self.selection = selection
 
-    # 便捷属性：快速获取某科成绩
-    def get_score(self, subject: str) -> float:
-        return self.subjects[subject].score
-
-    # 可选：动态属性（如 student.Chinese）
-    def __getattr__(self, name):
-        if name in self.subjects:
-            return self.subjects[name].score
-        raise AttributeError(
-            f"'{type(self).__name__}' object has no attribute '{name}'"
-        )
+    # 便捷属性：快速获取某科数据
+    def get_data(self, context: str):
+        if context in self.subjects:
+            return self.subjects[context].score
+        elif context.endswith("班名"):
+            return self.subjects[context.replace("班名", "")].class_rank
+        elif context.endswith("校名"):
+            return self.subjects[context.replace("校名", "")].school_rank
+        else:
+            logger.warning(f"{context}科不存在")
+            return None
 
 
 @dataclass
