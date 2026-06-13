@@ -151,3 +151,12 @@ class StreamingMap:
         """
         with open(path, "r", encoding="utf-8") as f:
             self._map = json.load(f)
+
+    def load_from_json_text(self, json_text: str) -> None:
+        """
+        从 JSON 格式文本加载映射配置（键值对）
+
+        Args:
+            json_text: JSON 格式的字符串，包含所有映射数据
+        """
+        self._map = json.loads(json_text)

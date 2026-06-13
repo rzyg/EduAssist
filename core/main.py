@@ -37,6 +37,44 @@ async def register(username: str, phone: str, identity: str):
         return {"message": "注册失败"}
 
 
+@app.post("/api/v1/transcript-upload-1-xlsx")
+async def transcript_1(
+    title: str,
+    scoreSheet: UploadFile = File(...),
+    lineJSON: str = Form(...),
+):
+    tmp_score_path = None
+    try:
+        # 创建临时文件
+        tmp_score_path = await summon_temp_file(scoreSheet)
+
+        # 加载表格并构建映射
+        from core.score.map import build_score_mapping, loadData
+        from core.score.models import StreamingMap
+
+        score_ws = loadData(tmp_score_path)
+        map_list = build_score_mapping(score_ws)
+        lines = StreamingMap()
+        lines.load_from_json_text(lineJSON)
+
+        # 提取学生成绩
+        from core.score.transcript.extract import extract_score
+        from core.score.transcript.output import create_table
+
+        students_list = extract_score(score_ws, map_list)
+        output_path = create_table(title, students_list, lines)
+        return {"output_path": output_path}
+    except HTTPException:
+        # 直接抛出的 HTTP 异常
+        raise
+    except Exception as e:
+        logger.error(f"处理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if tmp_score_path and os.path.exists(tmp_score_path):
+            os.unlink(tmp_score_path)
+
+
 @app.post("/api/v1/transcript-upload-2-xlsx")
 async def transcript_2(
     title: str,
