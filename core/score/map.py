@@ -138,6 +138,11 @@ def get_lines(ws: Worksheet) -> StreamingMap:
     line_map = StreamingMap()
     physics_line = getPosition(ws, "物理", 1, 1)
     history_line = getPosition(ws, "历史", 1, 1)
+
+    # 空值检查必须放在第一位，否则 physics_line[1] 会因 None 而崩溃
+    if physics_line is None or history_line is None:
+        raise ValueError("Excel 表中缺少必要字段: 物理/历史")
+
     subject_list = [
         "总分",
         "语文",
@@ -205,8 +210,6 @@ def get_lines(ws: Worksheet) -> StreamingMap:
                     value = ws.cell(row=row, column=col).value
                     line_map[f"历史{subject}_{line}"] = to_float(value)
 
-    elif physics_line is None or history_line is None:
-        raise ValueError("Excel 表中缺少必要字段: 物理/历史")
     return line_map
 
 
