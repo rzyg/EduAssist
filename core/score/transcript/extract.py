@@ -65,7 +65,7 @@ def extract_score(
                 )
             else:
                 logger.warning(f"{student_class}班{student_name} 没有 {subject} 科目")
-        if not subjects.get("英语"):
+        if "英语" not in subjects:
             logger.warning(f"{student_class}班{student_name} 没有英语科目")
             # 没有英语科目时，使用小语种代替
             small_score = float(
