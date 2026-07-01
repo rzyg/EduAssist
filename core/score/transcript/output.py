@@ -78,16 +78,7 @@ def create_table(
             direction, selecting1, selecting2 = expand_subject_abbreviation(
                 student.selection
             )
-            subject_list_total = [
-                "总分",
-                "语文",
-                "数学",
-                "英语",
-                direction,
-                selecting1,
-                selecting2,
-            ]
-        for subject in subject_list_total:
+        for subject in subject_list:
             try:
                 score = student.get_data(subject)
                 class_rank = student.get_data(f"{subject}班名")
@@ -99,9 +90,12 @@ def create_table(
         ws.append(data)
         for line in line_list:
             line_score = Line[f"{direction}总分_{line}"]
-            if index < len(students_list) - 1 and student.get_data(
-                "总分"
-            ) >= line_score > students_list[index + 1].get_data("总分"):
+            if (
+                index < len(students_list) - 1
+                and student.get_data("总分") is not None
+                and students_list[index + 1].get_data("总分") is not None
+                and student.get_data("总分") >= line_score > students_list[index + 1].get_data("总分")
+            ):
                 ws.append([f"{line}过线{index}人"])
                 row = ws.max_row
                 ws.merge_cells(
