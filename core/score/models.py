@@ -31,9 +31,17 @@ class Student:
         if context in self.subjects:
             return self.subjects[context].score
         elif context.endswith("班名"):
-            return self.subjects[context.replace("班名", "")].class_rank
+            subject = context.replace("班名", "")
+            if subject in self.subjects:
+                return self.subjects[subject].class_rank
+            logger.warning(f"{subject}科不存在")
+            return None
         elif context.endswith("校名"):
-            return self.subjects[context.replace("校名", "")].school_rank
+            subject = context.replace("校名", "")
+            if subject in self.subjects:
+                return self.subjects[subject].school_rank
+            logger.warning(f"{subject}科不存在")
+            return None
         else:
             logger.warning(f"{context}科不存在")
             return None
