@@ -1,7 +1,33 @@
 # core/db/crud.py
 import sqlite3
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set, Iterable
 from pathlib import Path
+
+# ========== 安全校验 ==========
+
+# 允许操作的表名白名单（防止 SQL 注入）
+ALLOWED_TABLES: Set[str] = {"user"}
+
+
+def _validate_table(table: str) -> None:
+    """
+    校验表名是否在白名单内，防止 SQL 注入
+    抛出 ValueError 而非静默失败，确保开发期能及时发现未注册的表
+    """
+    if table not in ALLOWED_TABLES:
+        raise ValueError(
+            f"表名 '{table}' 不在白名单 {ALLOWED_TABLES} 中，"
+            f"请先将表名注册到 ALLOWED_TABLES"
+        )
+
+
+def _quote_columns(columns: Iterable[str]) -> str:
+    """
+    用双引号包裹列名，防止列名含特殊字符或被注入
+    SQLite 支持用双引号作为标识符引用
+    """
+    return ", ".join(f'"{col}"' for col in columns)
+
 
 # ========== 辅助函数 ==========
 
@@ -31,7 +57,8 @@ def create_record(db_path: str | Path, table: str, data: Dict[str, Any]) -> int 
     插入单条记录
     返回：新插入记录的 ID
     """
-    columns = ", ".join(data.keys())
+    _validate_table(table)
+    columns = _quote_columns(data.keys())
     placeholders = ", ".join(["?"] * len(data))
     sql = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
 
@@ -47,6 +74,7 @@ def read_records(
     查询记录
     conditions: 可选，例如 {"name": "张三", "age": 20}
     """
+    _validate_table(table)
     with get_connection(db_path) as conn:
         _enable_dict_factory(conn)
         if conditions:
@@ -66,7 +94,8 @@ def update_record(
     更新单条记录（按 id 更新）
     返回：受影响的行数
     """
-    set_clause = ", ".join([f"{k}=?" for k in data.keys()])
+    _validate_table(table)
+    set_clause = ", ".join([f'"{k}"=?' for k in data.keys()])
     sql = f"UPDATE {table} SET {set_clause} WHERE id=?"
 
     with get_connection(db_path) as conn:
@@ -79,6 +108,7 @@ def delete_record(db_path: str | Path, table: str, record_id: int) -> int:
     删除单条记录（按 id 删除）
     返回：受影响的行数
     """
+    _validate_table(table)
     sql = f"DELETE FROM {table} WHERE id=?"
 
     with get_connection(db_path) as conn:
@@ -95,11 +125,14 @@ def batch_create_records(
     """
     批量插入多条记录
     返回：新插入记录的 ID 列表
+    注意: executemany 的 lastrowid 在 SQLite 中可能不可靠，
+    高并发场景建议改用循环调用 create_record。
     """
+    _validate_table(table)
     if not records:
         return []
 
-    columns = ", ".join(records[0].keys())
+    columns = _quote_columns(records[0].keys())
     placeholders = ", ".join(["?"] * len(records[0]))
     sql = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
 
@@ -118,13 +151,14 @@ def batch_update_records(db_path: str | Path, table: str, updates: List[Dict]) -
     updates 格式: [{"id": 1, "field1": "new_value", ...}, ...]
     返回：总受影响行数
     """
+    _validate_table(table)
     if not updates:
         return 0
 
     # 取第一个记录确定要更新的字段（排除 id）
     sample = updates[0]
     update_fields = [k for k in sample.keys() if k != "id"]
-    set_clause = ", ".join([f"{k}=?" for k in update_fields])
+    set_clause = ", ".join([f'"{k}"=?' for k in update_fields])
     sql = f"UPDATE {table} SET {set_clause} WHERE id=?"
 
     values = []
@@ -142,6 +176,7 @@ def batch_delete_records(db_path: str | Path, table: str, record_ids: List[int])
     批量删除多条记录（按 id 列表删除）
     返回：受影响的行数
     """
+    _validate_table(table)
     if not record_ids:
         return 0
 
@@ -165,8 +200,9 @@ def batch_update_by_condition(
     updates: 更新的数据，例如 {"score": 100}
     返回：受影响的行数
     """
-    set_clause = ", ".join([f"{k}=?" for k in updates.keys()])
-    where_clause = " AND ".join([f"{k}=?" for k in conditions.keys()])
+    _validate_table(table)
+    set_clause = ", ".join([f'"{k}"=?' for k in updates.keys()])
+    where_clause = " AND ".join([f'"{k}"=?' for k in conditions.keys()])
     sql = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
 
     params = list(updates.values()) + list(conditions.values())
@@ -184,7 +220,8 @@ def batch_delete_by_condition(
     conditions: 筛选条件，例如 {"class": "高三一班", "score": "<60"}（注意：复杂条件建议直接用 sql）
     返回：受影响的行数
     """
-    where_clause = " AND ".join([f"{k}=?" for k in conditions.keys()])
+    _validate_table(table)
+    where_clause = " AND ".join([f'"{k}"=?' for k in conditions.keys()])
     sql = f"DELETE FROM {table} WHERE {where_clause}"
 
     with get_connection(db_path) as conn:
