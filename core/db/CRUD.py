@@ -142,7 +142,9 @@ def batch_create_records(
         cursor = conn.executemany(sql, values)
         # 获取最后插入的 ID 范围
         last_id = cursor.lastrowid
-        return list(range(last_id - len(records) + 1, last_id + 1))
+        if last_id is not None:
+            return list(range(last_id - len(records) + 1, last_id + 1))
+        return []
 
 
 def batch_update_records(db_path: str | Path, table: str, updates: List[Dict]) -> int:
