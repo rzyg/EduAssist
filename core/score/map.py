@@ -90,8 +90,12 @@ def build_score_mapping(ws: Worksheet):
 
     total_x = total_pos[1]
     mapping["总分"] = total_x
-    mapping["总分班名"] = getPosition(ws, "班", 1, total_x, 5)[1]
-    mapping["总分校名"] = getPosition(ws, "校", 1, total_x, 5)[1]
+    total_ban = getPosition(ws, "班", 1, total_x, 5)
+    if total_ban:
+        mapping["总分班名"] = total_ban[1]
+    total_xiao = getPosition(ws, "校", 1, total_x, 5)
+    if total_xiao:
+        mapping["总分校名"] = total_xiao[1]
 
     # ========== 2. 固定科目（语数英）==========
     for subject in ["语文", "数学", "英语"]:
@@ -101,8 +105,12 @@ def build_score_mapping(ws: Worksheet):
 
         subject_x = pos[1]
         mapping[f"{subject}"] = subject_x
-        mapping[f"{subject}班名"] = getPosition(ws, "班", 1, subject_x, 5)[1]
-        mapping[f"{subject}校名"] = getPosition(ws, "校", 1, subject_x, 5)[1]
+        ban_pos = getPosition(ws, "班", 1, subject_x, 5)
+        if ban_pos:
+            mapping[f"{subject}班名"] = ban_pos[1]
+        xiao_pos = getPosition(ws, "校", 1, subject_x, 5)
+        if xiao_pos:
+            mapping[f"{subject}校名"] = xiao_pos[1]
 
     # ========== 3. 选考科目（动态匹配，存在则添加）==========
     optional_subjects = ["物理", "历史", "生物", "化学", "地理", "政治", "小语种"]
@@ -113,8 +121,12 @@ def build_score_mapping(ws: Worksheet):
         if pos:
             subject_x = pos[1]
             mapping[f"{subject}"] = subject_x
-            mapping[f"{subject}班名"] = getPosition(ws, "班", 1, subject_x, 5)[1]
-            mapping[f"{subject}校名"] = getPosition(ws, "校", 1, subject_x, 5)[1]
+            ban_pos = getPosition(ws, "班", 1, subject_x, 5)
+            if ban_pos:
+                mapping[f"{subject}班名"] = ban_pos[1]
+            xiao_pos = getPosition(ws, "校", 1, subject_x, 5)
+            if xiao_pos:
+                mapping[f"{subject}校名"] = xiao_pos[1]
             found_subjects.append(subject)
             logger.debug(f"找到选考科目: {subject}，列号: {subject_x}")
         else:
