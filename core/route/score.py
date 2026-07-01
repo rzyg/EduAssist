@@ -19,6 +19,13 @@ async def transcript_1(
 ):
     tmp_score_path = None
     try:
+        # 限制 JSON 大小，防止恶意 / 超大 payload
+        MAX_JSON_SIZE = 100 * 1024  # 100 KB
+        if len(lineJSON) > MAX_JSON_SIZE:
+            raise HTTPException(
+                status_code=400, detail="分数线 JSON 数据过大（上限 100KB）"
+            )
+
         # 创建临时文件
         tmp_score_path = await summon_temp_file(scoreSheet)
 
