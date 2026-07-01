@@ -64,10 +64,10 @@ def create_table(
     line_list = ["清北线", "985线", "211线", "特控线", "本科线"]
     for line in line_list:
         fill_list = [line]
+        direction = ""
+        if students_list[0].selection:
+            direction, _, _ = expand_subject_abbreviation(students_list[0].selection)
         for score in subject_list:
-            direction = ""
-            if students_list[0].selection:
-                direction = expand_subject_abbreviation(students_list[0].selection)[0]
             fill_list.extend([Line[f"{direction}{score}_{line}"], "", ""])
         ws.append(fill_list)
     # 填充学生成绩和过线情况
@@ -192,7 +192,7 @@ def create_table(
 """
 
 
-def expand_subject_abbreviation(abbreviation: str):
+def expand_subject_abbreviation(abbreviation: str) -> tuple[str, str, str]:
     """
     从选科简称还原为完整科目列表
 
@@ -200,7 +200,10 @@ def expand_subject_abbreviation(abbreviation: str):
         abbreviation: 选科简称,如 "物化地"、"史政地"、"物化生"
 
     返回:
-        完整科目列表,如 ["物理", "化学", "地理"]
+        完整科目元组,如 ("物理", "化学", "地理")
+
+    异常:
+        IndexError: 当 abbreviation 长度不足 3（选科简称应恰好3字）
     """
     # 定义简称到全称的映射
     abbreviation_map = {
@@ -213,11 +216,16 @@ def expand_subject_abbreviation(abbreviation: str):
     }
 
     # 逐字转换
-    result = list()
+    result: list[str] = []
     for char in abbreviation:
         if char in abbreviation_map:
             result.append(abbreviation_map[char])
         else:
             logger.warning(f"未知的选科简称字符: {char}")
 
-    return result[0], result[1], result[2]
+    if len(result) != 3:
+        logger.error(f"选科简称 '{abbreviation}' 转换后只有 {len(result)} 科，期望 3 科")
+        # 补全到 3 个，防止 IndexError
+        while len(result) < 3:
+            result.append("")
+    return (result[0], result[1], result[2])
