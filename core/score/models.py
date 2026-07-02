@@ -1,5 +1,5 @@
 import json
-from typing import Dict, NamedTuple, Optional, Any
+from typing import Dict, NamedTuple, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass, field
 from loguru import logger
@@ -168,3 +168,90 @@ class StreamingMap:
             json_text: JSON 格式的字符串，包含所有映射数据
         """
         self._map = json.loads(json_text)
+
+
+class ClassManager:
+    """
+    班级管理器 - 按班级分组管理学生
+
+    使用示例:
+        manager = ClassManager()
+        manager.add_student(student1)
+        manager.add_student(student2)
+
+        # 获取某班所有学生
+        students = manager.get_class("高三1班")
+
+        # 获取所有班级
+        all_classes = manager.get_all_classes()
+    """
+
+    def __init__(self):
+        self.classes: Dict[str, List[Student]] = {}
+
+    def add_student(self, student: Student) -> None:
+        """添加学生到对应班级"""
+        if not student.student_class:
+            logger.warning(f"学生 {student.name} 没有班级信息，跳过添加")
+            return
+
+        self.classes.setdefault(student.student_class, []).append(student)
+
+    def get_class(self, class_name: str) -> List[Student]:
+        """获取指定班级的学生列表"""
+        return self.classes.get(class_name, [])
+
+    def get_all_classes(self) -> List[str]:
+        """获取所有班级名称"""
+        return list(self.classes.keys())
+
+    def get_student_count(self, class_name: str) -> int:
+        """获取指定班级的学生人数"""
+        return len(self.classes.get(class_name, []))
+
+    def export_to_dict(self) -> Dict[str, List[Student]]:
+        """导出为字典格式"""
+        return self.classes.copy()
+
+
+@dataclass
+class SubjectStatistics:
+    """单科统计数据"""
+
+    single: int = 0  # 单上线人数
+    double: int = 0  # 双上线人数
+
+
+class ClassStatistics:
+    """
+    班级统计类 - 统计各科目单双上线情况
+
+    使用示例:
+        stats = ClassStatistics("高三1班")
+        stats.increment_single("语文清北线")
+        stats.increment_double("数学985线")
+
+        data = stats.get_statistics_data()
+    """
+
+    def __init__(self, name: str, count: int):
+        self.name = name
+        self.statistics: Dict[str, SubjectStatistics] = {}
+        self.count = count
+
+    def init_subject(self, subject: str) -> None:
+        """确保科目统计对象存在"""
+        if subject not in self.statistics:
+            self.statistics[subject] = SubjectStatistics()
+
+    def increment_single(self, subject: str) -> None:
+        """增加单上线计数"""
+        self.statistics[subject].single += 1
+
+    def increment_double(self, subject: str) -> None:
+        """增加双上线计数"""
+        self.statistics[subject].double += 1
+
+    def get_statistics_data(self) -> Dict[str, SubjectStatistics]:
+        """获取统计数据副本"""
+        return self.statistics.copy()
