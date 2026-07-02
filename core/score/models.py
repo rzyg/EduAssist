@@ -1,5 +1,5 @@
 import json
-from typing import Dict, NamedTuple, Optional, Any
+from typing import Dict, NamedTuple, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass, field
 from loguru import logger
@@ -168,3 +168,47 @@ class StreamingMap:
             json_text: JSON 格式的字符串，包含所有映射数据
         """
         self._map = json.loads(json_text)
+
+
+class ClassManager:
+    """
+    班级管理器 - 按班级分组管理学生
+
+    使用示例:
+        manager = ClassManager()
+        manager.add_student(student1)
+        manager.add_student(student2)
+
+        # 获取某班所有学生
+        students = manager.get_class("高三1班")
+
+        # 获取所有班级
+        all_classes = manager.get_all_classes()
+    """
+
+    def __init__(self):
+        self.classes: Dict[str, List[Student]] = {}
+
+    def add_student(self, student: Student) -> None:
+        """添加学生到对应班级"""
+        if not student.student_class:
+            logger.warning(f"学生 {student.name} 没有班级信息，跳过添加")
+            return
+
+        self.classes.setdefault(student.student_class, []).append(student)
+
+    def get_class(self, class_name: str) -> List[Student]:
+        """获取指定班级的学生列表"""
+        return self.classes.get(class_name, [])
+
+    def get_all_classes(self) -> List[str]:
+        """获取所有班级名称"""
+        return list(self.classes.keys())
+
+    def get_student_count(self, class_name: str) -> int:
+        """获取指定班级的学生人数"""
+        return len(self.classes.get(class_name, []))
+
+    def export_to_dict(self) -> Dict[str, List[Student]]:
+        """导出为字典格式"""
+        return self.classes.copy()
