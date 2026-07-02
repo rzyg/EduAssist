@@ -5,15 +5,15 @@ core/score/transcript/output.py 单元测试
   - expand_subject_abbreviation: 选科简称展开
   - create_table: 成绩单 Excel 输出（验证文件生成与基本结构）
 """
-import pytest
+
 from openpyxl import load_workbook
-from core.score.transcript.output import expand_subject_abbreviation, create_table
-from core.score.models import StreamingMap
+from core.score.output.transcript import expand_subject_abbreviation, create_table
 
 
 # =============================================================================
 # expand_subject_abbreviation
 # =============================================================================
+
 
 class TestExpandSubjectAbbreviation:
     """选科简称展开"""
@@ -57,6 +57,7 @@ class TestExpandSubjectAbbreviation:
 # create_table
 # =============================================================================
 
+
 class TestCreateTable:
     """成绩单 Excel 输出"""
 
@@ -65,39 +66,70 @@ class TestCreateTable:
         基本场景：3 名无选科学生，输出文件被创建且包含基本内容。
         """
         from core.score.models import Student, SubjectScore
+
         students = [
-            Student("一班", "张三", {
-                "总分": SubjectScore(600, 1, 2),
-                "语文": SubjectScore(130, 1, 3),
-                "数学": SubjectScore(142, 1, 2),
-                "英语": SubjectScore(128, 1, 2),
-            }, ""),
-            Student("一班", "李四", {
-                "总分": SubjectScore(550, 2, 5),
-                "语文": SubjectScore(120, 2, 5),
-                "数学": SubjectScore(135, 2, 5),
-                "英语": SubjectScore(118, 2, 6),
-            }, ""),
-            Student("一班", "王五", {
-                "总分": SubjectScore(500, 3, 8),
-                "语文": SubjectScore(110, 3, 8),
-                "数学": SubjectScore(125, 3, 8),
-                "英语": SubjectScore(105, 3, 10),
-            }, ""),
+            Student(
+                "一班",
+                "张三",
+                {
+                    "总分": SubjectScore(600, 1, 2),
+                    "语文": SubjectScore(130, 1, 3),
+                    "数学": SubjectScore(142, 1, 2),
+                    "英语": SubjectScore(128, 1, 2),
+                },
+                "",
+            ),
+            Student(
+                "一班",
+                "李四",
+                {
+                    "总分": SubjectScore(550, 2, 5),
+                    "语文": SubjectScore(120, 2, 5),
+                    "数学": SubjectScore(135, 2, 5),
+                    "英语": SubjectScore(118, 2, 6),
+                },
+                "",
+            ),
+            Student(
+                "一班",
+                "王五",
+                {
+                    "总分": SubjectScore(500, 3, 8),
+                    "语文": SubjectScore(110, 3, 8),
+                    "数学": SubjectScore(125, 3, 8),
+                    "英语": SubjectScore(105, 3, 10),
+                },
+                "",
+            ),
         ]
 
         from core.score.models import StreamingMap
+
         line_map = StreamingMap()
-        line_map.update({
-            "总分_清北线": 600, "总分_985线": 550, "总分_211线": 500,
-            "总分_特控线": 450, "总分_本科线": 400,
-            "语文_清北线": 130, "语文_985线": 120, "语文_211线": 110,
-            "语文_特控线": 100, "语文_本科线": 90,
-            "数学_清北线": 140, "数学_985线": 130, "数学_211线": 120,
-            "数学_特控线": 110, "数学_本科线": 100,
-            "英语_清北线": 130, "英语_985线": 120, "英语_211线": 110,
-            "英语_特控线": 100, "英语_本科线": 90,
-        })
+        line_map.update(
+            {
+                "总分_清北线": 600,
+                "总分_985线": 550,
+                "总分_211线": 500,
+                "总分_特控线": 450,
+                "总分_本科线": 400,
+                "语文_清北线": 130,
+                "语文_985线": 120,
+                "语文_211线": 110,
+                "语文_特控线": 100,
+                "语文_本科线": 90,
+                "数学_清北线": 140,
+                "数学_985线": 130,
+                "数学_211线": 120,
+                "数学_特控线": 110,
+                "数学_本科线": 100,
+                "英语_清北线": 130,
+                "英语_985线": 120,
+                "英语_211线": 110,
+                "英语_特控线": 100,
+                "英语_本科线": 90,
+            }
+        )
 
         output_path = create_table("测试考试", students, line_map)
         assert output_path.exists()
@@ -116,19 +148,33 @@ class TestCreateTable:
     def test_with_no_selection_students(self, tmp_path):
         """学生没有选科信息时也能生成"""
         from core.score.models import Student, SubjectScore, StreamingMap
+
         students = [
-            Student("一班", "赵六", {
-                "总分": SubjectScore(600, 1, 1),
-                "语文": SubjectScore(130, 1, 2),
-            }, "")
+            Student(
+                "一班",
+                "赵六",
+                {
+                    "总分": SubjectScore(600, 1, 1),
+                    "语文": SubjectScore(130, 1, 2),
+                },
+                "",
+            )
         ]
         line_map = StreamingMap()
-        line_map.update({
-            "总分_清北线": 600, "总分_985线": 550, "总分_211线": 500,
-            "总分_特控线": 450, "总分_本科线": 400,
-            "语文_清北线": 130, "语文_985线": 120, "语文_211线": 110,
-            "语文_特控线": 100, "语文_本科线": 90,
-        })
+        line_map.update(
+            {
+                "总分_清北线": 600,
+                "总分_985线": 550,
+                "总分_211线": 500,
+                "总分_特控线": 450,
+                "总分_本科线": 400,
+                "语文_清北线": 130,
+                "语文_985线": 120,
+                "语文_211线": 110,
+                "语文_特控线": 100,
+                "语文_本科线": 90,
+            }
+        )
         output_path = create_table("无选科测试", students, line_map)
         assert output_path.exists()
         wb = load_workbook(output_path)
@@ -140,19 +186,33 @@ class TestCreateTable:
     def test_with_single_student(self, tmp_path):
         """单名学生也能生成"""
         from core.score.models import Student, SubjectScore, StreamingMap
+
         single = [
-            Student("一班", "独苗", {
-                "总分": SubjectScore(600, 1, 1),
-                "语文": SubjectScore(130, 1, 2),
-            }, "")
+            Student(
+                "一班",
+                "独苗",
+                {
+                    "总分": SubjectScore(600, 1, 1),
+                    "语文": SubjectScore(130, 1, 2),
+                },
+                "",
+            )
         ]
         line_map = StreamingMap()
-        line_map.update({
-            "总分_清北线": 600, "总分_985线": 550, "总分_211线": 500,
-            "总分_特控线": 450, "总分_本科线": 400,
-            "语文_清北线": 130, "语文_985线": 120, "语文_211线": 110,
-            "语文_特控线": 100, "语文_本科线": 90,
-        })
+        line_map.update(
+            {
+                "总分_清北线": 600,
+                "总分_985线": 550,
+                "总分_211线": 500,
+                "总分_特控线": 450,
+                "总分_本科线": 400,
+                "语文_清北线": 130,
+                "语文_985线": 120,
+                "语文_211线": 110,
+                "语文_特控线": 100,
+                "语文_本科线": 90,
+            }
+        )
         output_path = create_table("单人测试", single, line_map)
         assert output_path.exists()
         wb = load_workbook(output_path)

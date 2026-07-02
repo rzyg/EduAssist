@@ -40,7 +40,7 @@ async def transcript_1(
 
         # 提取学生成绩
         from core.score.extract import extract_score
-        from core.score.transcript.output import create_table
+        from core.score.output.transcript import create_table
 
         students_list = extract_score(score_ws, map_list)
         output_path = create_table(title, students_list, lines)
@@ -78,7 +78,7 @@ async def transcript_2(
 
         # 提取学生成绩
         from core.score.extract import extract_score
-        from core.score.transcript.output import create_table
+        from core.score.output.transcript import create_table
 
         students_list = extract_score(score_ws, map_list)
         output_path = create_table(title, students_list, lines)
