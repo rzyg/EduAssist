@@ -39,7 +39,7 @@ async def transcript_1(
         lines.load_from_json_text(lineJSON)
 
         # 提取学生成绩
-        from core.score.transcript.extract import extract_score
+        from core.score.extract import extract_score
         from core.score.transcript.output import create_table
 
         students_list = extract_score(score_ws, map_list)
@@ -77,7 +77,7 @@ async def transcript_2(
         lines = get_lines(line_ws)
 
         # 提取学生成绩
-        from core.score.transcript.extract import extract_score
+        from core.score.extract import extract_score
         from core.score.transcript.output import create_table
 
         students_list = extract_score(score_ws, map_list)
