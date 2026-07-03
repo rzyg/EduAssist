@@ -238,19 +238,17 @@ class ClassStatistics:
         self.name = name
         self.statistics: Dict[str, SubjectStatistics] = {}
 
-    def _ensure_subject(self, subject: str) -> None:
+    def init_subject(self, subject: str) -> None:
         """确保科目统计对象存在"""
         if subject not in self.statistics:
             self.statistics[subject] = SubjectStatistics()
 
     def increment_single(self, subject: str) -> None:
         """增加单上线计数"""
-        self._ensure_subject(subject)
         self.statistics[subject].single += 1
 
     def increment_double(self, subject: str) -> None:
         """增加双上线计数"""
-        self._ensure_subject(subject)
         self.statistics[subject].double += 1
 
     def get_statistics_data(self) -> Dict[str, SubjectStatistics]:

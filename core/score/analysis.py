@@ -57,9 +57,13 @@ def run_statistics(
         for subject in total_subjects_list:
             if subject in person.subjects:
                 for line in total_lines:
+                    # 初始化单双上线统计
+                    statistics.init_subject(f"{subject}{line}")
+                    # 获取分数、分数线、总分分数线
                     line_total_score = LineScore.get(f"{direction}总分_{line}")
                     score = person.get_data(subject)
                     line_score = LineScore.get(f"{direction}{subject}_{line}")
+                    # 判断单双上线
                     if score and line_score and score >= line_score:
                         statistics.increment_single(f"{subject}{line}")
                         if (
