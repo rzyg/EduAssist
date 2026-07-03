@@ -227,12 +227,11 @@ class ClassStatistics:
     班级统计类 - 统计各科目单双上线情况
 
     使用示例:
-        stats = ClassStatistics("高三1班", students_list)
-        stats.increment_single("语文")
-        stats.increment_double("数学")
+        stats = ClassStatistics("高三1班")
+        stats.increment_single("语文清北线")
+        stats.increment_double("数学985线")
 
         data = stats.get_statistics_data()
-        # 返回: {"语文": SubjectStatistics(single=10, double=5), ...}
     """
 
     def __init__(self, name: str):
