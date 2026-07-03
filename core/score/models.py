@@ -235,9 +235,8 @@ class ClassStatistics:
         # 返回: {"语文": SubjectStatistics(single=10, double=5), ...}
     """
 
-    def __init__(self, name: str, students: List[Student]):
+    def __init__(self, name: str):
         self.name = name
-        self.students = students
         self.statistics: Dict[str, SubjectStatistics] = {}
 
     def _ensure_subject(self, subject: str) -> None:
