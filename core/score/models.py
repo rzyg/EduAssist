@@ -257,7 +257,3 @@ class ClassStatistics:
     def get_statistics_data(self) -> Dict[str, SubjectStatistics]:
         """获取统计数据副本"""
         return self.statistics.copy()
-
-    def get_total_students(self) -> int:
-        """获取班级总人数"""
-        return len(self.students)
