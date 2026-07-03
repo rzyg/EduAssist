@@ -103,9 +103,11 @@ def create_table(
                 index < len(students_list) - 1
                 and student.get_data("总分") is not None
                 and students_list[index + 1].get_data("总分") is not None
-                and student.get_data("总分") >= line_score > students_list[index + 1].get_data("总分")
+                and student.get_data("总分")
+                >= line_score
+                > students_list[index + 1].get_data("总分")
             ):
-                ws.append([f"{line}过线{index}人"])
+                ws.append([f"{line}过线{index + 1}人"])
                 row = ws.max_row
                 ws.merge_cells(
                     start_row=row, start_column=1, end_row=row, end_column=ws.max_column
@@ -233,7 +235,9 @@ def expand_subject_abbreviation(abbreviation: str) -> tuple[str, str, str]:
             logger.warning(f"未知的选科简称字符: {char}")
 
     if len(result) != 3:
-        logger.error(f"选科简称 '{abbreviation}' 转换后只有 {len(result)} 科，期望 3 科")
+        logger.error(
+            f"选科简称 '{abbreviation}' 转换后只有 {len(result)} 科，期望 3 科"
+        )
         # 补全到 3 个，防止 IndexError
         while len(result) < 3:
             result.append("")
