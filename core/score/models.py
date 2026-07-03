@@ -212,3 +212,53 @@ class ClassManager:
     def export_to_dict(self) -> Dict[str, List[Student]]:
         """导出为字典格式"""
         return self.classes.copy()
+
+
+@dataclass
+class SubjectStatistics:
+    """单科统计数据"""
+
+    single: int = 0  # 单上线人数
+    double: int = 0  # 双上线人数
+
+
+class ClassStatistics:
+    """
+    班级统计类 - 统计各科目单双上线情况
+
+    使用示例:
+        stats = ClassStatistics("高三1班", students_list)
+        stats.increment_single("语文")
+        stats.increment_double("数学")
+
+        data = stats.get_statistics_data()
+        # 返回: {"语文": SubjectStatistics(single=10, double=5), ...}
+    """
+
+    def __init__(self, name: str, students: List[Student]):
+        self.name = name
+        self.students = students
+        self.statistics: Dict[str, SubjectStatistics] = {}
+
+    def _ensure_subject(self, subject: str) -> None:
+        """确保科目统计对象存在"""
+        if subject not in self.statistics:
+            self.statistics[subject] = SubjectStatistics()
+
+    def increment_single(self, subject: str) -> None:
+        """增加单上线计数"""
+        self._ensure_subject(subject)
+        self.statistics[subject].single += 1
+
+    def increment_double(self, subject: str) -> None:
+        """增加双上线计数"""
+        self._ensure_subject(subject)
+        self.statistics[subject].double += 1
+
+    def get_statistics_data(self) -> Dict[str, SubjectStatistics]:
+        """获取统计数据副本"""
+        return self.statistics.copy()
+
+    def get_total_students(self) -> int:
+        """获取班级总人数"""
+        return len(self.students)
