@@ -204,7 +204,8 @@ def get_lines(ws: Worksheet) -> StreamingMap:
                 row = mapping.get(f"物理{subject}")
                 if row is not None and isinstance(row, int) and row > 0:
                     value = ws.cell(row=row, column=col).value
-                    line_map[f"物理{subject}_{line}"] = to_float(value)
+                    if to_float(value) > 0:
+                        line_map[f"物理{subject}_{line}"] = to_float(value)
 
         # 历史方向
 
@@ -220,7 +221,8 @@ def get_lines(ws: Worksheet) -> StreamingMap:
                 row = mapping.get(f"历史{subject}")
                 if row is not None and isinstance(row, int) and row > 0:
                     value = ws.cell(row=row, column=col).value
-                    line_map[f"历史{subject}_{line}"] = to_float(value)
+                    if to_float(value) > 0:
+                        line_map[f"历史{subject}_{line}"] = to_float(value)
 
     return line_map
 

@@ -57,11 +57,15 @@ def run_statistics(
         for subject in total_subjects_list:
             if subject in person.subjects:
                 for line in total_lines:
+                    line_total_score = LineScore.get(f"{direction}总分_{line}")
                     score = person.get_data(subject)
-                    if score and score >= LineScore.get(f"{direction}{subject}_{line}"):
+                    line_score = LineScore.get(f"{direction}{subject}_{line}")
+                    if score and line_score and score >= line_score:
                         statistics.increment_single(f"{subject}{line}")
-                        if subject != "总分" and total_score >= LineScore.get(
-                            f"{direction}总分_{line}"
+                        if (
+                            subject != "总分"
+                            and line_total_score
+                            and total_score >= line_total_score
                         ):
                             statistics.increment_double(f"{subject}{line}")
     return statistics
