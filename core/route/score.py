@@ -3,7 +3,6 @@ from loguru import logger
 import tempfile
 import os
 
-
 # 创建路由器实例
 router = APIRouter(
     prefix="/api/v1/score",  # 统一前缀
@@ -83,6 +82,58 @@ async def transcript_2(
         students_list = extract_score(score_ws, map_list)
         output_path = create_table(title, students_list, lines)
         return {"output_path": output_path}
+    except HTTPException:
+        # 直接抛出的 HTTP 异常
+        raise
+    except Exception as e:
+        logger.error(f"处理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if tmp_score_path and os.path.exists(tmp_score_path):
+            os.unlink(tmp_score_path)
+
+
+@router.post("/analysis-upload-2-xlsx")
+async def analysis_2(
+    title: str,
+    scoreSheet: UploadFile = File(..., description="原始成绩单"),
+    lineSheet: UploadFile = File(..., description="分数线"),
+):
+    tmp_score_path = None
+    try:
+        # 创建临时文件
+        tmp_score_path = await summon_temp_file(scoreSheet)
+        tmp_line_path = await summon_temp_file(lineSheet)
+
+        # 加载表格并构建映射
+        from core.score.map import build_score_mapping, loadData, get_lines
+
+        score_ws = loadData(tmp_score_path)
+        line_ws = loadData(tmp_line_path)
+        map_list = build_score_mapping(score_ws)
+        lines = get_lines(line_ws)
+
+        # 提取学生成绩
+        from core.score.extract import extract_score
+
+        students_list = extract_score(score_ws, map_list)
+
+        # 导入班级管理器，用于将学生分班级管理
+        from core.score.models import ClassManager
+
+        class_manager = ClassManager()
+        for student in students_list:
+            class_manager.add_student(student)
+
+        from core.score.analysis import analysis
+
+        statistics_list, direction = analysis(class_manager, lines)
+
+        # 导出
+        from core.score.output.analysis import output_statistics
+
+        output_path = output_statistics(title, statistics_list, direction, lines)
+        return output_path
     except HTTPException:
         # 直接抛出的 HTTP 异常
         raise
