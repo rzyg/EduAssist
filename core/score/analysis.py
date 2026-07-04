@@ -1,6 +1,6 @@
 from core.score.models import ClassManager, ClassStatistics, Student, StreamingMap
 
-from typing import Dict, NamedTuple, Optional, Any, List
+from typing import List
 from loguru import logger
 
 
