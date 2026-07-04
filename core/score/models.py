@@ -234,9 +234,10 @@ class ClassStatistics:
         data = stats.get_statistics_data()
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, count: int):
         self.name = name
         self.statistics: Dict[str, SubjectStatistics] = {}
+        self.count = count
 
     def init_subject(self, subject: str) -> None:
         """确保科目统计对象存在"""
