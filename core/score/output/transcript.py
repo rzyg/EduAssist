@@ -192,6 +192,13 @@ def create_table(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     output_path = output_dir / f"{title}.xlsx"
+    # 检查文件是否存在，如果存在则添加时间戳
+    if output_path.exists():
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%H%M%S")
+        output_path = output_dir / f"{title}_{timestamp}.xlsx"
+        logger.info(f"文件已存在，使用新文件名: {output_path}")
     wb.save(output_path)
     logger.info(f"保存成功: {output_path}")
     return output_path
