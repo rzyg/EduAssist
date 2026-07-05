@@ -12,9 +12,10 @@
   "app": {
     "windows": [
       {
-        "title": "eduassist",
-        "width": 800,
-        "height": 600
+        "title": "下班工具箱",
+        "width": 1080,
+        "height": 720,
+        "resizable": false
       }
     ],
     "security": {
