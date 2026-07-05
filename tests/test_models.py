@@ -9,7 +9,7 @@ core/score/models.py 单元测试
 import json
 import pytest
 from pathlib import Path
-from core.score.models import SubjectScore, Student, StreamingMap
+from core.score.models import SubjectScore, Student, StreamingMap, ClassManager, SubjectStatistics, ClassStatistics
 
 
 # =============================================================================
@@ -221,3 +221,166 @@ class TestStreamingMap:
         m = StreamingMap()
         with pytest.raises(json.JSONDecodeError):
             m.load_from_json_text("这不是 JSON")
+
+
+# =============================================================================
+# ClassManager
+# =============================================================================
+
+class TestClassManager:
+    """班级管理器的分组与查询功能"""
+
+    # ── 辅助夹具 ──
+
+    @pytest.fixture
+    def student_a(self):
+        return Student("一班", "甲", {"语文": SubjectScore(100, 1, 2)}, "物化生")
+
+    @pytest.fixture
+    def student_b(self):
+        return Student("一班", "乙", {"数学": SubjectScore(90, 2, 5)}, "物化生")
+
+    @pytest.fixture
+    def student_c(self):
+        return Student("二班", "丙", {"英语": SubjectScore(80, 3, 8)}, "史政地")
+
+    def test_add_and_get_class(self, student_a, student_b, student_c):
+        """添加学生后能按班级获取"""
+        mgr = ClassManager()
+        mgr.add_student(student_a)
+        mgr.add_student(student_b)
+        mgr.add_student(student_c)
+
+        class1 = mgr.get_class("一班")
+        assert len(class1) == 2
+        assert class1[0].name == "甲"
+        assert class1[1].name == "乙"
+
+        class2 = mgr.get_class("二班")
+        assert len(class2) == 1
+        assert class2[0].name == "丙"
+
+    def test_get_all_classes(self, student_a, student_c):
+        """获取所有班级名称"""
+        mgr = ClassManager()
+        mgr.add_student(student_a)
+        mgr.add_student(student_c)
+        classes = mgr.get_all_classes()
+        assert "一班" in classes
+        assert "二班" in classes
+        assert len(classes) == 2
+
+    def test_get_student_count(self, student_a, student_b):
+        """统计班级人数"""
+        mgr = ClassManager()
+        mgr.add_student(student_a)
+        mgr.add_student(student_b)
+        assert mgr.get_student_count("一班") == 2
+        assert mgr.get_student_count("三班") == 0  # 不存在的班
+
+    def test_get_nonexistent_class(self):
+        """不存在的班级返回空列表"""
+        mgr = ClassManager()
+        assert mgr.get_class("不存在") == []
+
+    def test_empty_class_list(self):
+        """空管理器返回空班级列表"""
+        mgr = ClassManager()
+        assert mgr.get_all_classes() == []
+
+    def test_skip_student_without_class(self):
+        """没有班级信息的学生跳过添加"""
+        mgr = ClassManager()
+        no_class = Student(None, "无名氏", {"总分": SubjectScore(500, 1, 1)}, "")
+        mgr.add_student(no_class)
+        assert mgr.get_all_classes() == []
+
+    def test_export_to_dict(self, student_a, student_c):
+        """导出为字典格式"""
+        mgr = ClassManager()
+        mgr.add_student(student_a)
+        mgr.add_student(student_c)
+        exported = mgr.export_to_dict()
+        assert isinstance(exported, dict)
+        assert "一班" in exported
+        assert len(exported["一班"]) == 1
+
+
+# =============================================================================
+# SubjectStatistics
+# =============================================================================
+
+class TestSubjectStatistics:
+    """单科统计数据"""
+
+    def test_default_zero(self):
+        """默认单双上线均为 0"""
+        s = SubjectStatistics()
+        assert s.single == 0
+        assert s.double == 0
+
+    def test_increment_single(self):
+        """单上线自增"""
+        s = SubjectStatistics()
+        s.single += 1
+        assert s.single == 1
+
+    def test_increment_double(self):
+        """双上线自增"""
+        s = SubjectStatistics()
+        s.double += 1
+        assert s.double == 1
+
+
+# =============================================================================
+# ClassStatistics
+# =============================================================================
+
+class TestClassStatistics:
+    """班级各科单双上线统计"""
+
+    @pytest.fixture
+    def stats(self):
+        return ClassStatistics("高三1班", 50)
+
+    def test_init(self, stats):
+        """初始化班级名称和学生人数"""
+        assert stats.name == "高三1班"
+        assert stats.count == 50
+
+    def test_init_subject(self, stats):
+        """init_subject 创建科目统计对象"""
+        stats.init_subject("语文清北线")
+        assert "语文清北线" in stats.statistics
+        assert stats.statistics["语文清北线"].single == 0
+
+    def test_init_subject_idempotent(self, stats):
+        """重复 init_subject 不会覆盖已有数据"""
+        stats.init_subject("总分985线")
+        stats.increment_single("总分985线")
+        stats.init_subject("总分985线")  # 再次调用
+        assert stats.statistics["总分985线"].single == 1
+
+    def test_increment_single(self, stats):
+        """单上线计数自增"""
+        stats.init_subject("数学985线")
+        stats.increment_single("数学985线")
+        assert stats.statistics["数学985线"].single == 1
+
+    def test_increment_double(self, stats):
+        """双上线计数自增"""
+        stats.init_subject("数学985线")
+        stats.increment_double("数学985线")
+        assert stats.statistics["数学985线"].double == 1
+
+    def test_get_statistics_data(self, stats):
+        """get_statistics_data 返回副本（浅拷贝：新 key 不影响原数据）"""
+        stats.init_subject("总分清北线")
+        stats.increment_single("总分清北线")
+        data = stats.get_statistics_data()
+        # 在副本中添加新 key，不影响原数据
+        data["新增测试"] = SubjectStatistics(99, 99)
+        assert "新增测试" not in stats.statistics
+        # 删除副本中的 key，不影响原数据
+        del data["总分清北线"]
+        assert "总分清北线" in stats.statistics
