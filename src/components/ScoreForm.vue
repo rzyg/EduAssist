@@ -175,7 +175,7 @@ async function handleSubmit() {
       }
       formData.append('lineJSON', JSON.stringify(jsonData))
     } else {
-      formData.append('lineSheet', lineSheetFile.value)
+      formData.append('lineSheet', lineSheetFile.value!)
     }
 
     const response = await fetch(props.apiEndpoint, {
