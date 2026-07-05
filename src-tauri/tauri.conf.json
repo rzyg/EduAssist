@@ -15,7 +15,8 @@
         "title": "下班工具箱",
         "width": 1080,
         "height": 720,
-        "resizable": false
+        "resizable": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

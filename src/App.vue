@@ -1,55 +1,57 @@
 <template>
   <n-config-provider :theme-overrides="themeOverrides">
-    <n-layout has-sider class="sider">
-      <n-layout-sider
-          bordered
-          collapse-mode="width"
-          :collapsed-width="64"
-          :width="220"
-          :collapsed="collapsed"
-          show-trigger
-          @collapse="collapsed = true"
-          @expand="collapsed = false"
-          class="sider-content"
-      >
-        <div class="menu-wrapper">
-          <div class="sider-header">
-            <img class="logo" src="/src/assets/logo.png" alt="logo" :style="{ left: collapsed ? '20%' : '17%' }">
-            <transition name="fade">
-              <p v-show="!collapsed" class="title">下班工具箱</p>
-            </transition>
+    <n-message-provider>
+      <n-layout has-sider class="sider">
+        <n-layout-sider
+            bordered
+            collapse-mode="width"
+            :collapsed-width="64"
+            :width="220"
+            :collapsed="collapsed"
+            show-trigger
+            @collapse="collapsed = true"
+            @expand="collapsed = false"
+            class="sider-content"
+        >
+          <div class="menu-wrapper">
+            <div class="sider-header">
+              <img class="logo" src="/src/assets/logo.png" alt="logo" :style="{ left: collapsed ? '20%' : '17%' }">
+              <transition name="fade">
+                <p v-show="!collapsed" class="title">下班工具箱</p>
+              </transition>
+            </div>
+            <n-menu
+                v-model:value="activeKey"
+                :collapsed="collapsed"
+                :collapsed-width="64"
+                :collapsed-icon-size="22"
+                :options="topMenuOptions"
+                key-field="childrenKey"
+                label-field="childrenLabel"
+                children-field="childrenChildren"
+            />
+            <n-menu
+                v-model:value="activeKey"
+                :collapsed="collapsed"
+                :collapsed-width="64"
+                :collapsed-icon-size="22"
+                :options="bottomMenuOptions"
+                key-field="childrenKey"
+                label-field="childrenLabel"
+                children-field="childrenChildren"
+                class="bottom-menu"
+            />
           </div>
-          <n-menu
-              v-model:value="activeKey"
-              :collapsed="collapsed"
-              :collapsed-width="64"
-              :collapsed-icon-size="22"
-              :options="topMenuOptions"
-              key-field="childrenKey"
-              label-field="childrenLabel"
-              children-field="childrenChildren"
-          />
-          <n-menu
-              v-model:value="activeKey"
-              :collapsed="collapsed"
-              :collapsed-width="64"
-              :collapsed-icon-size="22"
-              :options="bottomMenuOptions"
-              key-field="childrenKey"
-              label-field="childrenLabel"
-              children-field="childrenChildren"
-              class="bottom-menu"
-          />
-        </div>
-      </n-layout-sider>
-      <n-layout class="main-content">
-        <router-view v-slot="{ Component }">
-          <transition name="zoom-fade" mode="out-in">
-            <component :is="Component" :key="route.path"/>
-          </transition>
-        </router-view>
+        </n-layout-sider>
+        <n-layout class="main-content">
+          <router-view v-slot="{ Component }">
+            <transition name="zoom-fade" mode="out-in">
+              <component :is="Component" :key="route.path"/>
+            </transition>
+          </router-view>
+        </n-layout>
       </n-layout>
-    </n-layout>
+    </n-message-provider>
   </n-config-provider>
 </template>
 
@@ -57,6 +59,7 @@
 import type {MenuOption} from 'naive-ui'
 import type {Component} from 'vue'
 import type {GlobalThemeOverrides} from 'naive-ui'
+import {NMessageProvider} from 'naive-ui'
 
 const themeOverrides: GlobalThemeOverrides = {
   common: {
