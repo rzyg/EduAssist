@@ -1,55 +1,84 @@
 <template>
-  <n-layout has-sider class="sider">
-    <n-layout-sider
-        bordered
-        collapse-mode="width"
-        :collapsed-width="64"
-        :width="220"
-        :collapsed="collapsed"
-        show-trigger
-        @collapse="collapsed = true"
-        @expand="collapsed = false"
-        class="sider-content"
-    >
-      <div class="menu-wrapper">
-        <div class="sider-header">
-          <img class="logo" src="/src/assets/logo.png" alt="logo" :style="{ left: collapsed ? '20%' : '17%' }">
-          <transition name="fade">
-            <p v-show="!collapsed" class="title">下班工具箱</p>
-          </transition>
+  <n-config-provider :theme-overrides="themeOverrides">
+    <n-layout has-sider class="sider">
+      <n-layout-sider
+          bordered
+          collapse-mode="width"
+          :collapsed-width="64"
+          :width="220"
+          :collapsed="collapsed"
+          show-trigger
+          @collapse="collapsed = true"
+          @expand="collapsed = false"
+          class="sider-content"
+      >
+        <div class="menu-wrapper">
+          <div class="sider-header">
+            <img class="logo" src="/src/assets/logo.png" alt="logo" :style="{ left: collapsed ? '20%' : '17%' }">
+            <transition name="fade">
+              <p v-show="!collapsed" class="title">下班工具箱</p>
+            </transition>
+          </div>
+          <n-menu
+              v-model:value="activeKey"
+              :collapsed="collapsed"
+              :collapsed-width="64"
+              :collapsed-icon-size="22"
+              :options="topMenuOptions"
+              key-field="childrenKey"
+              label-field="childrenLabel"
+              children-field="childrenChildren"
+          />
+          <n-menu
+              v-model:value="activeKey"
+              :collapsed="collapsed"
+              :collapsed-width="64"
+              :collapsed-icon-size="22"
+              :options="bottomMenuOptions"
+              key-field="childrenKey"
+              label-field="childrenLabel"
+              children-field="childrenChildren"
+              class="bottom-menu"
+          />
         </div>
-        <n-menu
-            v-model:value="activeKey"
-            :collapsed="collapsed"
-            :collapsed-width="64"
-            :collapsed-icon-size="22"
-            :options="topMenuOptions"
-            key-field="childrenKey"
-            label-field="childrenLabel"
-            children-field="childrenChildren"
-        />
-        <n-menu
-            v-model:value="activeKey"
-            :collapsed="collapsed"
-            :collapsed-width="64"
-            :collapsed-icon-size="22"
-            :options="bottomMenuOptions"
-            key-field="childrenKey"
-            label-field="childrenLabel"
-            children-field="childrenChildren"
-            class="bottom-menu"
-        />
-      </div>
-    </n-layout-sider>
-    <n-layout class="main-content">
-      <router-view/>
+      </n-layout-sider>
+      <n-layout class="main-content">
+        <router-view/>
+      </n-layout>
     </n-layout>
-  </n-layout>
+  </n-config-provider>
 </template>
 
 <script setup lang="ts">
 import type {MenuOption} from 'naive-ui'
 import type {Component} from 'vue'
+import type {GlobalThemeOverrides} from 'naive-ui'
+
+const themeOverrides: GlobalThemeOverrides = {
+  common: {
+    primaryColor: '#3288ed',
+    primaryColorHover: '#55a1f8',
+    primaryColorPressed: '#2a6fca',
+    primaryColorSuppl: '#5aa5fa',
+    successColor: '#4caf50',
+    successColorHover: '#66bb6a',
+    successColorPressed: '#3d9e41',
+    successColorSuppl: '#81c784',
+    warningColor: '#ff9800',
+    warningColorHover: '#ffa726',
+    warningColorPressed: '#f57c00',
+    warningColorSuppl: '#ffb74d',
+    errorColor: '#f44336',
+    errorColorHover: '#ef5350',
+    errorColorPressed: '#d32f2f',
+    errorColorSuppl: '#e57373',
+    infoColor: '#8ea3e8',
+    infoColorHover: '#a4b6f0',
+    infoColorPressed: '#3f51b5',
+    infoColorSuppl: '#9fa8da',
+  },
+}
+
 import {
   Home as HomeIcon,
   Award as AwardIcon,
