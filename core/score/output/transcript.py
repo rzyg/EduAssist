@@ -68,8 +68,14 @@ def create_table(
         if students_list[0].selection:
             direction, _, _ = expand_subject_abbreviation(students_list[0].selection)
         for score in subject_list:
-            fill_list.extend([Line[f"{direction}{score}_{line}"], "", ""])
+            line_key = f"{direction}{score}_{line}"
+            if Line.has(line_key):
+                fill_list.extend([Line[line_key], "", ""])
+            else:
+                logger.warning(f"分数线数据缺失: {line_key}")
+                fill_list.extend(["", "", ""])
         ws.append(fill_list)
+
     # 填充学生成绩和过线情况
     for index, student in enumerate(students_list):
         data = [student.name]
