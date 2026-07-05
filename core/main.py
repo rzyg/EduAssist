@@ -1,9 +1,23 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from core.db.init import initDatabase
 from core.logger import setup_logging
 from core.route import register_routers
 
 app = FastAPI(title="EduAssist API", version="0.1.0")
+
+# 配置 CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:1420",
+        "tauri://localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 初始化日志
 setup_logging()
 # 初始化数据库（确保表存在）
