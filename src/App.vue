@@ -13,7 +13,7 @@
     >
       <div class="menu-wrapper">
         <div class="sider-header">
-          <img class="logo" src="/src/assets/logo.png" alt="logo">
+          <img class="logo" src="/src/assets/logo.png" alt="logo" :style="{ left: collapsed ? '20%' : '17%' }">
           <transition name="fade">
             <p v-show="!collapsed" class="title">下班工具箱</p>
           </transition>
@@ -41,7 +41,9 @@
         />
       </div>
     </n-layout-sider>
-    <n-layout/>
+    <n-layout class="main-content">
+      <router-view/>
+    </n-layout>
   </n-layout>
 </template>
 
@@ -58,18 +60,31 @@ import {
   Settings as SettingIcon
 } from '@vicons/tabler'
 import {NIcon} from 'naive-ui'
-import {h, ref} from 'vue'
+import {h, ref, watch} from 'vue'
+import {useRouter, useRoute} from 'vue-router'
 
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, {default: () => h(icon)})
 }
 
-const activeKey = ref<string | null>(null)
+const router = useRouter()
+const route = useRoute()
+const activeKey = ref<string | null>(route.name as string || 'home')
+
+watch(activeKey, (newKey) => {
+  if (newKey) {
+    router.push({name: newKey})
+  }
+})
+
+watch(() => route.name, (newName) => {
+  activeKey.value = newName as string
+})
 
 const topMenuOptions: MenuOption[] = [
   {
     childrenLabel: '主页',
-    childrenKey: 'home-page',
+    childrenKey: 'home',
     icon: renderIcon(HomeIcon)
   },
   {
@@ -124,6 +139,11 @@ const collapsed = ref(false)
   user-select: none;
 }
 
+.main-content {
+  height: 100vh;
+  overflow: auto;
+}
+
 .sider-content {
   position: relative;
 }
@@ -155,7 +175,6 @@ const collapsed = ref(false)
   flex-shrink: 0;
   transition: all 0.3s ease;
   position: absolute;
-  left: 17%;
 }
 
 .title {
