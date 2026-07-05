@@ -12,6 +12,12 @@
         class="sider-content"
     >
       <div class="menu-wrapper">
+        <div class="sider-header">
+          <img class="logo" src="/src/assets/logo.png" alt="logo">
+          <transition name="fade">
+            <p v-show="!collapsed" class="title">下班工具箱</p>
+          </transition>
+        </div>
         <n-menu
             v-model:value="activeKey"
             :collapsed="collapsed"
@@ -126,9 +132,47 @@ const collapsed = ref(false)
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f6f6f6 0%, #f7eeff 100%);
 }
 
 .bottom-menu {
   margin-top: auto;
+}
+
+.sider-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 4.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  position: absolute;
+  left: 17%;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 0;
+  white-space: nowrap;
+  padding-left: 3rem;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
