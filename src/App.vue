@@ -43,7 +43,11 @@
         </div>
       </n-layout-sider>
       <n-layout class="main-content">
-        <router-view/>
+        <router-view v-slot="{ Component }">
+          <transition name="zoom-fade" mode="out-in">
+            <component :is="Component" :key="route.path"/>
+          </transition>
+        </router-view>
       </n-layout>
     </n-layout>
   </n-config-provider>
@@ -222,5 +226,20 @@ const collapsed = ref(false)
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.zoom-fade-enter-active,
+.zoom-fade-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.zoom-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.zoom-fade-leave-to {
+  opacity: 0;
+  transform: scale(1.02);
 }
 </style>
