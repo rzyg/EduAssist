@@ -185,7 +185,6 @@ function renderProject(project: OpenSourceProject) {
 
 <style scoped>.info-container {
   height: 100vh;
-  overflow: auto;
   margin: 0;
   padding: 0;
 }

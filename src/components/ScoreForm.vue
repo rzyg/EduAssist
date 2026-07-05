@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref} from 'vue'
 import {useMessage, type UploadFileInfo} from 'naive-ui'
+
 const props = withDefaults(defineProps<{
   cardTitle: string
   apiEndpoint: string
@@ -42,8 +43,30 @@ const lineData = ref({
     '政治': '',
     '地理': ''
   },
-  '985线': {'总分': '', '语文': '', '数学': '', '英语': '', '物理': '', '化学': '', '生物': '', '历史': '', '政治': '', '地理': ''},
-  '211线': {'总分': '', '语文': '', '数学': '', '英语': '', '物理': '', '化学': '', '生物': '', '历史': '', '政治': '', '地理': ''},
+  '985线': {
+    '总分': '',
+    '语文': '',
+    '数学': '',
+    '英语': '',
+    '物理': '',
+    '化学': '',
+    '生物': '',
+    '历史': '',
+    '政治': '',
+    '地理': ''
+  },
+  '211线': {
+    '总分': '',
+    '语文': '',
+    '数学': '',
+    '英语': '',
+    '物理': '',
+    '化学': '',
+    '生物': '',
+    '历史': '',
+    '政治': '',
+    '地理': ''
+  },
   '特控线': {
     '总分': '',
     '语文': '',
@@ -310,7 +333,7 @@ function closeModal() {
         <template v-if="lineMethod === 'table'">
           <n-form-item label="选科分科">
             <n-space align="center">
-              <n-switch v-model:value="isDifferentiated" />
+              <n-switch v-model:value="isDifferentiated"/>
               <span style="font-size: 14px; color: var(--n-text-color-2);">
                 {{ isDifferentiated ? '已分科' : '未分科' }}
               </span>
@@ -325,28 +348,28 @@ function closeModal() {
           </n-form-item>
 
           <n-form-item label="分数线数据">
-          <n-table :bordered="true" :single-line="false" size="small">
-            <thead>
-            <tr>
-              <th>学科</th>
-              <th v-for="lineType in lineTypes" :key="lineType">{{ lineType }}</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="subject in displaySubjects" :key="subject">
-              <td>{{ subject }}</td>
-              <td v-for="lineType in lineTypes" :key="lineType">
-                <n-input
-                    v-model:value="lineData[lineType][subject]"
-                    placeholder="0"
-                    size="tiny"
-                    style="width: 60px"
-                />
-              </td>
-            </tr>
-            </tbody>
-          </n-table>
-        </n-form-item>
+            <n-table :bordered="true" :single-line="false" size="small">
+              <thead>
+              <tr>
+                <th>学科</th>
+                <th v-for="lineType in lineTypes" :key="lineType">{{ lineType }}</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr v-for="subject in displaySubjects" :key="subject">
+                <td>{{ subject }}</td>
+                <td v-for="lineType in lineTypes" :key="lineType">
+                  <n-input
+                      v-model:value="lineData[lineType][subject]"
+                      placeholder="0"
+                      size="tiny"
+                      style="width: 60px"
+                  />
+                </td>
+              </tr>
+              </tbody>
+            </n-table>
+          </n-form-item>
         </template>
 
 
@@ -392,8 +415,6 @@ function closeModal() {
 
 <style scoped>
 .score-form-container {
-  height: 100vh;
-  overflow: auto;
   margin: 0;
   padding: 0;
 }

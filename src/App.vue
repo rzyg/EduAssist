@@ -1,6 +1,7 @@
 <template>
   <n-config-provider :theme-overrides="themeOverrides">
     <n-message-provider>
+      <DragArea/>
       <n-layout has-sider class="sider">
         <n-layout-sider
             bordered
@@ -60,6 +61,7 @@ import type {MenuOption} from 'naive-ui'
 import type {Component} from 'vue'
 import type {GlobalThemeOverrides} from 'naive-ui'
 import {NMessageProvider} from 'naive-ui'
+import DragArea from './components/DragArea.vue'
 
 const themeOverrides: GlobalThemeOverrides = {
   common: {
@@ -177,7 +179,7 @@ const collapsed = ref(false)
 
 .main-content {
   height: 100vh;
-  overflow: auto;
+  padding-top: 1rem
 }
 
 .sider-content {
