@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import {ref, computed} from 'vue'
 import {useMessage, type UploadFileInfo} from 'naive-ui'
 
 const props = withDefaults(defineProps<{
@@ -16,8 +16,10 @@ const message = useMessage()
 
 const title = ref('')
 const scoreSheetFileList = ref<UploadFileInfo[]>([])
+const scoreSheetFile = ref<File | null>(null)
 const lineMethod = ref<'table' | 'file'>('file')
 const lineSheetFileList = ref<UploadFileInfo[]>([])
+const lineSheetFile = ref<File | null>(null)
 const loading = ref(false)
 const showModal = ref(false)
 const outputPath = ref('')
@@ -105,11 +107,17 @@ function handleLineSheetChange({fileList}: { fileList: UploadFileInfo[] }) {
   lineSheetFileList.value = fileList
 }
 
-async function customRequest({file: _file, onFinish}: { file: UploadFileInfo; onFinish: () => void }) {
-  // Naive UI 的 custom-request 用于接管上传逻辑
-  // 这里我们只是选择文件，实际上传在 handleSubmit 中处理
-  onFinish()
+function createCustomRequest(targetRef: { value: File | null }) {
+  return ({file, onFinish}: { file: UploadFileInfo; onFinish: () => void }) => {
+    if (file.file) {
+      targetRef.value = file.file
+    }
+    onFinish()
+  }
 }
+
+const scoreSheetCustomRequest = createCustomRequest(scoreSheetFile)
+const lineSheetCustomRequest = createCustomRequest(lineSheetFile)
 
 async function handleSubmit() {
   if (!title.value.trim()) {
@@ -117,7 +125,7 @@ async function handleSubmit() {
     return
   }
 
-  if (scoreSheetFileList.value.length === 0 || !scoreSheetFileList.value[0].file) {
+  if (!scoreSheetFile.value) {
     message.warning('请上传原始成绩单文件')
     return
   }
@@ -141,7 +149,7 @@ async function handleSubmit() {
     }
   }
 
-  if (lineMethod.value === 'file' && (lineSheetFileList.value.length === 0 || !lineSheetFileList.value[0].file)) {
+  if (lineMethod.value === 'file' && !lineSheetFile.value) {
     message.warning('请上传分数线表格文件')
     return
   }
@@ -151,7 +159,7 @@ async function handleSubmit() {
   try {
     const formData = new FormData()
     formData.append('title', title.value)
-    formData.append('scoreSheet', scoreSheetFileList.value[0].file as File)
+    formData.append('scoreSheet', scoreSheetFile.value)
 
     if (lineMethod.value === 'table') {
       // 将表格数据转换为扁平 JSON
@@ -167,7 +175,7 @@ async function handleSubmit() {
       }
       formData.append('lineJSON', JSON.stringify(jsonData))
     } else {
-      formData.append('lineSheet', lineSheetFileList.value[0].file as File)
+      formData.append('lineSheet', lineSheetFile.value)
     }
 
     const response = await fetch(props.apiEndpoint, {
@@ -188,7 +196,9 @@ async function handleSubmit() {
     // 清空表单
     title.value = ''
     scoreSheetFileList.value = []
+    scoreSheetFile.value = null
     lineSheetFileList.value = []
+    lineSheetFile.value = null
     // 重置表格数据
     for (const lineType of lineTypes) {
       for (const subject of displaySubjects.value) {
@@ -290,7 +300,7 @@ function closeModal() {
               :max="1"
               :file-list="scoreSheetFileList"
               @change="handleScoreSheetChange"
-              :custom-request="customRequest"
+              :custom-request="scoreSheetCustomRequest"
               accept=".xlsx"
               dragger
           >
@@ -334,11 +344,11 @@ function closeModal() {
           <n-form-item label="选科分科">
             <n-space align="center">
               <n-switch v-model:value="isDifferentiated"/>
-              <span style="font-size: 14px; color: var(--n-text-color-2);">
+              <n-text depth="2" style="font-size: 14px;">
                 {{ isDifferentiated ? '已分科' : '未分科' }}
-              </span>
+              </n-text>
               <template v-if="isDifferentiated">
-                <span style="margin: 0 4px 0 12px; color: var(--n-text-color-3);">方向</span>
+                <n-text depth="3" style="margin: 0 4px 0 12px; font-size: 14px;">方向</n-text>
                 <n-radio-group v-model:value="direction" size="small">
                   <n-radio value="物理">物理</n-radio>
                   <n-radio value="历史">历史</n-radio>
@@ -378,7 +388,7 @@ function closeModal() {
               :max="1"
               :file-list="lineSheetFileList"
               @change="handleLineSheetChange"
-              :custom-request="customRequest"
+              :custom-request="lineSheetCustomRequest"
               accept=".xlsx"
               dragger
           >
