@@ -107,7 +107,7 @@ function openWebsite() {
 .main-logo {
   width: 12rem;
   height: 12rem;
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
   filter: drop-shadow(0 0 2em #448348);
 }
 
