@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from loguru import logger
-from pathlib import Path
 from core.db.CRUD import create_record
+from core.config import DATA_DIR
 
 router = APIRouter(
     prefix="/api/v1",
@@ -24,7 +24,7 @@ async def register(body: RegisterRequest):
     用户注册
     将用户信息写入本地数据库
     """
-    database_path = Path(__file__).resolve().parent.parent.parent / "data" / "data.db"
+    database_path = DATA_DIR / "data.db"
     try:
         create_record(
             database_path,

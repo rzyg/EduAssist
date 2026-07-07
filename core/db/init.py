@@ -1,9 +1,10 @@
 def initDatabase():
     import sqlite3
     from pathlib import Path
+    from core.config import DATA_DIR
 
     # 确保目录存在
-    dataDir = Path.cwd() / "data"
+    dataDir = DATA_DIR
     dataDir.mkdir(parents=True, exist_ok=True)
     databasePath = dataDir / "data.db"
 

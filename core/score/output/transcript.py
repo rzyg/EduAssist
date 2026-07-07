@@ -193,8 +193,9 @@ def create_table(
     ws.print_options.horizontalCentered = True
     # （可选）设置纸张方向或纸张大小
     ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    from core.config import OUTPUT_DIR
     # 确保目录存在
-    output_dir = Path.cwd() / "output" / "成绩单"
+    output_dir = OUTPUT_DIR / "成绩单"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     output_path = output_dir / f"{title}.xlsx"

@@ -34,8 +34,9 @@ def output_statistics(
     write_data(ws, statistics_list, direction)
     # 设置表格样式
     theme_excel(ws)
+    from core.config import OUTPUT_DIR
     # 确保目录存在
-    output_dir = Path.cwd() / "output" / "成绩分析"
+    output_dir = OUTPUT_DIR / "成绩分析"
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{title}.xlsx"
     # 检查文件是否存在，如果存在则添加时间戳

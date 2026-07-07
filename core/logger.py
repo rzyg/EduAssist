@@ -1,6 +1,5 @@
 from loguru import logger
 import sys
-from pathlib import Path
 
 
 def setup_logging():
@@ -17,7 +16,8 @@ def setup_logging():
     )
 
     # 文件输出（生产环境）
-    log_dir = Path.cwd() / "logs"
+    from core.config import LOGS_DIR
+    log_dir = LOGS_DIR
     log_dir.mkdir(exist_ok=True)
 
     logger.add(
