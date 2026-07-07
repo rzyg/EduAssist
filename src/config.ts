@@ -36,6 +36,16 @@ export async function getToken(): Promise<string> {
     return _token
 }
 
+/** 获取开发者模式状态（Tauri 环境） */
+export async function getDevMode(): Promise<boolean> {
+    try {
+        const {invoke} = await import('@tauri-apps/api/core')
+        return await invoke<boolean>('get_dev_mode')
+    } catch {
+        return false
+    }
+}
+
 /** 带 Bearer Token 的 fetch 封装 */
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
     const url = await api(path)

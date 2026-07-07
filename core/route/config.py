@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from loguru import logger
+
 from core.config import config, save_config
 
 router = APIRouter(
@@ -19,7 +20,7 @@ async def update_config(body: dict):
     """更新配置"""
     global config
 
-    allowed_keys = {"server", "paths"}
+    allowed_keys = {"server", "paths", "dev_mode"}
     for key in body:
         if key not in allowed_keys:
             raise HTTPException(status_code=400, detail=f"不允许的配置项: {key}")

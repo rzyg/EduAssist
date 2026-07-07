@@ -1,6 +1,8 @@
 """项目配置 — 基于 YAML 文件，支持读写"""
-from pathlib import Path
+
 import os
+from pathlib import Path
+
 import yaml
 
 # ── 文件路径（优先环境变量，兼容 Nuitka exe CWD 偏移）────────────────────
@@ -19,6 +21,7 @@ DEFAULT_CONFIG = {
         "data": "data",
         "logs": "logs",
     },
+    "dev_mode": False,
 }
 
 
@@ -62,6 +65,6 @@ def save_config(cfg: dict) -> None:
 config = load_config()
 
 # ── 派生路径（保留与旧代码的兼容性）──────────────────────────────────────
-DATA_DIR   = BASE_DIR / config["paths"]["data"]
+DATA_DIR = BASE_DIR / config["paths"]["data"]
 OUTPUT_DIR = BASE_DIR / config["paths"]["output"]
-LOGS_DIR   = BASE_DIR / config["paths"]["logs"]
+LOGS_DIR = BASE_DIR / config["paths"]["logs"]
