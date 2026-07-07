@@ -1,4 +1,5 @@
-<script setup lang="ts">import {getCurrentWindow} from '@tauri-apps/api/window'
+<script setup lang="ts">
+import {getCurrentWindow} from '@tauri-apps/api/window'
 
 const appWindow = getCurrentWindow()
 
