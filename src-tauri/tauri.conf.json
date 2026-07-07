@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "if exist .\\pydist\\main.dist (xcopy /E /I /Y .\\pydist\\main.dist .\\src-tauri\\core && pnpm build) else (echo Error: Python build not found & exit /b 1)",
     "frontendDist": "../dist"
   },
   "app": {
@@ -33,6 +33,20 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      },
+      "nsis": {
+        "languages": [
+          "SimpChinese",
+          "English"
+        ]
+      }
+    },
+    "resources": {
+      "./core": "core"
+    }
   }
 }

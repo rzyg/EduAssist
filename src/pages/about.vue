@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {h} from 'vue'
 import {NCard, NList, NListItem, NSpace, NTag, useThemeVars, NAvatar} from 'naive-ui'
-import avatar from 'assets/about/兰因.png'
+import avatar from '../assets/about/Lana_avatar.png'
 
 const themeVars = useThemeVars()
 
