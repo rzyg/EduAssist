@@ -1,9 +1,11 @@
 """项目配置 — 基于 YAML 文件，支持读写"""
 from pathlib import Path
+import os
 import yaml
 
-# ── 文件路径（永不依赖 CWD）──────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent.parent
+# ── 文件路径（优先环境变量，兼容 Nuitka exe CWD 偏移）────────────────────
+_BASE_ENV = os.environ.get("EDUASSIST_BASE")
+BASE_DIR = Path(_BASE_ENV) if _BASE_ENV else Path(__file__).resolve().parent.parent
 CONFIG_FILE = BASE_DIR / "config.yaml"
 
 # ── 默认配置 ─────────────────────────────────────────────────────────────

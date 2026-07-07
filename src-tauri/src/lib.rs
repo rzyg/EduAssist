@@ -20,12 +20,12 @@ struct BackendProcess {
 
 // ── 开发模式下弹出一个独立的控制台窗口 ──────────────────────────────────
 #[cfg(windows)]
-fn with_dev_console(mut cmd: Command) -> Command {
+fn with_dev_console(cmd: &mut Command) -> &mut Command {
     cmd.creation_flags(CREATE_NEW_CONSOLE);
     cmd
 }
 #[cfg(not(windows))]
-fn with_dev_console(cmd: Command) -> Command {
+fn with_dev_console(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
@@ -51,21 +51,44 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
     }
 
     let child = if tauri::is_dev() {
-        let conda_cmd = || -> Result<Child, std::io::Error> {
-            let mut c = Command::new("conda");
-            c.args(["run", "--no-capture-output", "-n", "eduassist", "--cwd", "..", "python", "-m", "core.main"])
-             .current_dir(base_dir);
-            with_dev_console(c).spawn()
-        };
-        conda_cmd().or_else(|_| {
-            let mut c = Command::new("python");
-            c.args(["-m", "core.main"])
-             .current_dir(base_dir);
-            with_dev_console(c).spawn()
+        // 开发环境：使用项目根目录作为工作目录
+        println!("📍 开发环境，项目根目录: {:?}", base_dir);
+
+        // 方式1：使用 conda
+        let conda_result = with_dev_console(
+            Command::new("conda")
+                .args([
+                    "run", "--no-capture-output", "-n", "eduassist",
+                    "python", "-m", "core.main",
+                ])
+                .current_dir(base_dir)
+                .env("EDUASSIST_BASE", base_dir.as_os_str()),
+        )
+        .spawn();
+
+        conda_result.or_else(|_| {
+            // 方式2：降级到直接使用 python
+            println!("⚠️ conda 启动失败，尝试直接使用 python");
+            with_dev_console(
+                Command::new(base_dir.join(".venv/Scripts/python.exe"))
+                    .args(["-m", "core.main"])
+                    .current_dir(base_dir)
+                    .env("EDUASSIST_BASE", base_dir.as_os_str()),
+            )
+            .spawn()
         }).map_err(|e| format!("启动后端失败 (dev): {}", e))?
     } else {
-        Command::new("core/main.exe")
+        // 生产环境：使用安装根目录
+        println!("📍 生产环境，安装目录: {:?}", base_dir);
+
+        let exe_path = base_dir.join("core/main.exe");
+        if !exe_path.exists() {
+            return Err(format!("后端程序不存在: {:?}", exe_path));
+        }
+
+        Command::new(exe_path)
             .current_dir(base_dir)
+            .env("EDUASSIST_BASE", base_dir.as_os_str())
             .spawn()
             .map_err(|e| format!("启动后端失败: {}", e))?
     };
