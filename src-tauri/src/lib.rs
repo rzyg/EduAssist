@@ -42,9 +42,39 @@ fn with_dev_console(cmd: &mut Command) -> &mut Command {
 
 // ── Tauri 命令 ──────────────────────────────────────────────────────────
 
+/// 强制杀死进程树（Windows 用 taskkill，其他平台用 kill）
+fn kill_process_tree(child: &mut Child) {
+    #[cfg(windows)]
+    {
+        let pid = child.id();
+        let _ = Command::new("taskkill")
+            .args(["/F", "/T", "/PID", &pid.to_string()])
+            .spawn()
+            .and_then(|mut c| c.wait());
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
 #[tauri::command]
 fn get_token(state: tauri::State<BackendProcess>) -> String {
     state.token.clone()
+}
+
+#[tauri::command]
+fn get_dev_mode(state: tauri::State<BackendProcess>) -> bool {
+    let config_path = state.base_dir.join("config.yaml");
+    if let Ok(content) = std::fs::read_to_string(&config_path) {
+        content.lines().any(|l| {
+            let t = l.trim();
+            t.starts_with("dev_mode:") && t.trim_start_matches("dev_mode:").trim() == "true"
+        })
+    } else {
+        false
+    }
 }
 
 #[tauri::command]
@@ -60,43 +90,50 @@ fn get_mode() -> String {
 fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> {
     let base_dir = &state.base_dir;
 
+    // 判断开发者模式 → 不传递 auth token
+    let is_dev_mode = {
+        let config_path = base_dir.join("config.yaml");
+        if let Ok(content) = std::fs::read_to_string(&config_path) {
+            content.lines().any(|l| {
+                let t = l.trim();
+                t.starts_with("dev_mode:") && t.trim_start_matches("dev_mode:").trim() == "true"
+            })
+        } else {
+            false
+        }
+    };
+    let token = if is_dev_mode { "" } else { &state.token };
+
     let mut guard = state.child.lock().map_err(|e| e.to_string())?;
     if let Some(ref mut child) = *guard {
-        let _ = child.kill();
+        kill_process_tree(child);
         let _ = child.wait();
     }
 
     let child = if tauri::is_dev() {
-        // 开发环境：使用项目根目录作为工作目录
         println!("📍 开发环境，项目根目录: {:?}", base_dir);
 
-        // 方式1：使用 conda
         let conda_result = with_dev_console(
             Command::new("conda")
-                .args([
-                    "run", "--no-capture-output", "-n", "eduassist",
-                    "python", "-m", "core.main",
-                ])
+                .args(["run", "--no-capture-output", "-n", "eduassist", "python", "-m", "core.main"])
                 .current_dir(base_dir)
                 .env("EDUASSIST_BASE", base_dir.as_os_str())
-                .env("EDUASSIST_TOKEN", &state.token),
+                .env("EDUASSIST_TOKEN", token),
         )
         .spawn();
 
         conda_result.or_else(|_| {
-            // 方式2：降级到直接使用 python
             println!("⚠️ conda 启动失败，尝试直接使用 python");
             with_dev_console(
                 Command::new(base_dir.join(".venv/Scripts/python.exe"))
                     .args(["-m", "core.main"])
                     .current_dir(base_dir)
                     .env("EDUASSIST_BASE", base_dir.as_os_str())
-                .env("EDUASSIST_TOKEN", &state.token),
+                    .env("EDUASSIST_TOKEN", token),
             )
             .spawn()
         }).map_err(|e| format!("启动后端失败 (dev): {}", e))?
     } else {
-        // 生产环境：使用安装根目录
         println!("📍 生产环境，安装目录: {:?}", base_dir);
 
         let exe_path = base_dir.join("core/main.exe");
@@ -107,6 +144,7 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
         Command::new(exe_path)
             .current_dir(base_dir)
             .env("EDUASSIST_BASE", base_dir.as_os_str())
+            .env("EDUASSIST_TOKEN", token)
             .spawn()
             .map_err(|e| format!("启动后端失败: {}", e))?
     };
@@ -119,7 +157,7 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
 fn kill_backend(state: tauri::State<BackendProcess>) -> Result<String, String> {
     let mut guard = state.child.lock().map_err(|e| e.to_string())?;
     if let Some(ref mut child) = *guard {
-        let _ = child.kill();
+        kill_process_tree(child);
         let _ = child.wait();
         *guard = None;
     }
@@ -165,8 +203,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(state) = app.try_state::<BackendProcess>() {
                     if let Ok(mut guard) = state.child.lock() {
                         if let Some(ref mut child) = *guard {
-                            let _ = child.kill().ok();
-                            let _ = child.wait().ok();
+                            kill_process_tree(child);
                         }
                     }
                 }
@@ -251,6 +288,7 @@ pub fn run() {
             greet,
             get_mode,
             get_token,
+            get_dev_mode,
             start_backend,
             kill_backend,
             restart_backend,
