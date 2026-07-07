@@ -11,7 +11,7 @@ router = APIRouter(
 
 
 @router.post("/transcript")
-async def transcript(
+def transcript(
     title: str = Form(..., description="成绩单标题"),
     scoreSheet: UploadFile = File(..., description="原始成绩单"),
     lineSheet: UploadFile = File(None, description="分数线表格（可选）"),
@@ -51,7 +51,7 @@ async def transcript(
                 )
 
         # 创建临时文件
-        tmp_score_path = await summon_temp_file(scoreSheet)
+        tmp_score_path = save_upload_file(scoreSheet)
 
         # 加载成绩单表格并构建映射
         from core.score.map import build_score_mapping, loadData
@@ -69,7 +69,7 @@ async def transcript(
             lines.load_from_json_text(lineJSON)
         else:
             # 方式2：从分数线表格加载
-            tmp_line_path = await summon_temp_file(lineSheet)
+            tmp_line_path = save_upload_file(lineSheet)
             from core.score.map import get_lines
 
             line_ws = loadData(tmp_line_path)
@@ -99,7 +99,7 @@ async def transcript(
 
 
 @router.post("/analysis")
-async def analysis_upload(
+def analysis_upload(
     title: str = Form(..., description="分析报表标题"),
     scoreSheet: UploadFile = File(..., description="原始成绩单"),
     lineSheet: UploadFile = File(None, description="分数线表格（可选）"),
@@ -139,7 +139,7 @@ async def analysis_upload(
                 )
 
         # 创建临时文件
-        tmp_score_path = await summon_temp_file(scoreSheet)
+        tmp_score_path = save_upload_file(scoreSheet)
 
         # 加载成绩单表格并构建映射
         from core.score.map import build_score_mapping, loadData
@@ -157,7 +157,7 @@ async def analysis_upload(
             lines.load_from_json_text(lineJSON)
         else:
             # 方式2：从分数线表格加载
-            tmp_line_path = await summon_temp_file(lineSheet)
+            tmp_line_path = save_upload_file(lineSheet)
             from core.score.map import get_lines
 
             line_ws = loadData(tmp_line_path)
@@ -201,7 +201,7 @@ async def analysis_upload(
             os.unlink(tmp_line_path)
 
 
-async def summon_temp_file(scoreSheet: UploadFile) -> str:
+def save_upload_file(scoreSheet: UploadFile) -> str:
     """
     从上传的文件中创建临时文件
     :param scoreSheet: 上传的文件
@@ -217,7 +217,7 @@ async def summon_temp_file(scoreSheet: UploadFile) -> str:
         suffix = ".xlsx"
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        content = await scoreSheet.read()
+        content = scoreSheet.file.read()
         tmp_file.write(content)
         tmp_file_path = tmp_file.name
         logger.info(f"临时文件保存在：{tmp_file_path}")
