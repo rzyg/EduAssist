@@ -10,23 +10,27 @@
 
 <script setup lang="ts">
 import {ref, onMounted} from 'vue'
-import {API_BASE} from './config'
+import {getApiBase} from './config'
 import StartupScreen from './components/StartupScreen.vue'
 import MainLayout from './components/MainLayout.vue'
 
 const initializing = ref(true)
 const initFailed = ref(false)
 const initStatus = ref('')
+let backendUrl = 'http://127.0.0.1:8000'
 
 async function checkAlive(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/health`, {signal: AbortSignal.timeout(1500)})
+    const res = await fetch(`${backendUrl}/health`, {signal: AbortSignal.timeout(1500)})
     return res.ok && (await res.json()).status === 'ok'
   } catch { return false }
 }
 
 async function doInit() {
   initFailed.value = false
+
+  // 0. 从 config.yaml 获取后端真实地址
+  backendUrl = await getApiBase()
 
   // 1. 快速检测，不在线才尝试拉起（不阻塞动画）
   const wasAlive = await checkAlive()

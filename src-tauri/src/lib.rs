@@ -150,6 +150,44 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// ── 从 config.yaml 读取后端地址 ──────────────────────────────────────────
+#[tauri::command]
+fn get_backend_url(state: tauri::State<BackendProcess>) -> Result<String, String> {
+    let base_dir = &state.base_dir;
+    let config_path = base_dir.join("config.yaml");
+
+    if !config_path.exists() {
+        return Ok("http://127.0.0.1:8000".to_string());
+    }
+
+    let content = std::fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
+    let mut host = "127.0.0.1";
+    let mut port = "8000";
+    let mut in_server = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "server:" {
+            in_server = true;
+            continue;
+        }
+        if in_server {
+            if trimmed.starts_with("host:") {
+                host = trimmed.trim_start_matches("host:").trim().trim_matches('"');
+                // 如果是 localhost，转成 127.0.0.1
+                if host == "localhost" { host = "127.0.0.1"; }
+            } else if trimmed.starts_with("port:") {
+                port = trimmed.trim_start_matches("port:").trim().trim_matches('"');
+            } else if trimmed.contains(':') && !trimmed.starts_with('#') {
+                // 遇到下一个顶层 key，退出 server 段
+                in_server = false;
+            }
+        }
+    }
+
+    Ok(format!("http://{}:{}", host, port))
+}
+
 // ── 入口 ────────────────────────────────────────────────────────────────
 
 fn detect_base_dir(app: &tauri::App) -> PathBuf {
@@ -173,7 +211,8 @@ pub fn run() {
             get_mode,
             start_backend,
             kill_backend,
-            restart_backend
+            restart_backend,
+            get_backend_url
         ])
         .setup(|app| {
             let base_dir = detect_base_dir(app);

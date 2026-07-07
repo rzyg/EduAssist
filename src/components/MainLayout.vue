@@ -5,7 +5,7 @@ import type {GlobalThemeOverrides} from 'naive-ui'
 import {NMessageProvider, NIcon, createDiscreteApi} from 'naive-ui'
 import {h, ref, watch, onMounted, onUnmounted} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {API_BASE} from '../config'
+import {getApiBase} from '../config'
 import DragArea from './DragArea.vue'
 
 const {message} = createDiscreteApi(['message'])
@@ -84,13 +84,13 @@ const bottomMenuOptions: MenuOption[] = [
 ]
 
 // ── 运行时健康检测 ──
-const BACKEND_URL = API_BASE
+let backendUrl = 'http://127.0.0.1:8000'
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null
 let healthMsg: any = null
 
 async function checkAlive(): Promise<boolean> {
   try {
-    const res = await fetch(`${BACKEND_URL}/health`, {signal: AbortSignal.timeout(1500)})
+    const res = await fetch(`${backendUrl}/health`, {signal: AbortSignal.timeout(1500)})
     return res.ok && (await res.json()).status === 'ok'
   } catch { return false }
 }
@@ -104,7 +104,8 @@ async function checkHealth() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  backendUrl = await getApiBase()
   healthCheckTimer = setInterval(checkHealth, 5000)
 })
 
