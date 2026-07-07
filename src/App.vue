@@ -97,9 +97,11 @@ import {
   InfoCircle as AboutIcon,
   Settings as SettingIcon
 } from '@vicons/tabler'
-import {NIcon} from 'naive-ui'
-import {h, ref, watch} from 'vue'
+import {NIcon, createDiscreteApi} from 'naive-ui'
+import {h, ref, watch, onMounted, onUnmounted} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
+
+const {message} = createDiscreteApi(['message'])
 
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, {default: () => h(icon)})
@@ -170,6 +172,37 @@ const bottomMenuOptions: MenuOption[] = [
 ]
 
 const collapsed = ref(false)
+
+// 后端健康检查
+let healthCheckTimer: ReturnType<typeof setInterval> | null = null
+let healthMsg: any = null
+
+async function checkHealth() {
+  try {
+    const res = await fetch('http://localhost:8000/health', {
+      signal: AbortSignal.timeout(800)
+    })
+    const data = await res.json()
+    if (res.ok && data.status === 'ok') {
+      healthMsg?.destroy()
+      healthMsg = null
+    }
+  } catch {
+    if (!healthMsg) {
+      healthMsg = message.warning('后端服务未连接，部分功能不可用', {duration: 0})
+    }
+  }
+}
+
+onMounted(() => {
+  checkHealth()
+  healthCheckTimer = setInterval(checkHealth, 5000)
+})
+
+onUnmounted(() => {
+  if (healthCheckTimer) clearInterval(healthCheckTimer)
+  healthMsg?.destroy()
+})
 </script>
 <style scoped>
 .sider {
@@ -247,4 +280,6 @@ const collapsed = ref(false)
   opacity: 0;
   transform: scale(1.02);
 }
+
+
 </style>
