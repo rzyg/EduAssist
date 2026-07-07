@@ -53,7 +53,7 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
     let child = if tauri::is_dev() {
         let conda_cmd = || -> Result<Child, std::io::Error> {
             let mut c = Command::new("conda");
-            c.args(["run", "--no-capture-output", "-n", "eduassist", "python", "-m", "core.main"])
+            c.args(["run", "--no-capture-output", "-n", "eduassist", "--cwd", "..", "python", "-m", "core.main"])
              .current_dir(base_dir);
             with_dev_console(c).spawn()
         };
