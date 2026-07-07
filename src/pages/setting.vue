@@ -159,9 +159,9 @@ onMounted(loadConfig)
         </n-form-item>
         <n-form-item label="开发者模式">
           <n-switch v-model:value="devMode"/>
-          <span style="margin-left: 8px; font-size: 13px; color: var(--n-text-color-3);">
+          <n-text depth="3" style="margin-left: 8px; font-size: 13px;">
             {{ devMode ? '开启（跳过 token 验证）' : '关闭' }}
-          </span>
+          </n-text>
         </n-form-item>
 
         <n-divider title-position="left">路径</n-divider>
@@ -195,8 +195,7 @@ onMounted(loadConfig)
         @positive-click="confirmSaveAndRestart"
         @negative-click="showConfirm = false"
     >
-      {{
-        serverHost.value !== origHost || serverPort.value !== origPort || devMode.value !== origDevMode
+      {{serverHost !== origHost || serverPort !== origPort || devMode !== origDevMode
             ? '服务器配置已变更，保存后将重启后端。确认？'
             : '确认保存配置？'
       }}
@@ -211,7 +210,7 @@ onMounted(loadConfig)
     >
       <n-card :bordered="false" style="text-align: center; padding: 32px 0;">
         <n-spin size="large"/>
-        <p style="margin-top: 20px; font-size: 15px; color: var(--n-text-color-2);">
+        <p style="margin-top: 20px; font-size: 15px; color: #888;">
           {{ restartStatus }}
         </p>
       </n-card>
