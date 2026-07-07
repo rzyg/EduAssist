@@ -176,6 +176,7 @@ const collapsed = ref(false)
 // 后端健康检查
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null
 let healthMsg: any = null
+let healthFailCount = 0
 
 async function checkHealth() {
   try {
@@ -184,12 +185,25 @@ async function checkHealth() {
     })
     const data = await res.json()
     if (res.ok && data.status === 'ok') {
+      healthFailCount = 0
       healthMsg?.destroy()
       healthMsg = null
     }
   } catch {
+    healthFailCount++
     if (!healthMsg) {
       healthMsg = message.warning('后端服务未连接，部分功能不可用', {duration: 0})
+    }
+    // 连续 3 次失败，通过 Tauri 自动重启后端
+    if (healthFailCount >= 3) {
+      healthFailCount = 0
+      try {
+        const {invoke} = await import('@tauri-apps/api/core')
+        await invoke('restart_backend')
+        message.success('正在自动重启后端…')
+      } catch {
+        // 非 Tauri 环境（浏览器开发模式），忽略
+      }
     }
   }
 }
