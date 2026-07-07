@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {h} from 'vue'
 import {NCard, NList, NListItem, NSpace, NTag, useThemeVars, NAvatar} from 'naive-ui'
+import avatar from 'assets/about/兰因.png'
 
 const themeVars = useThemeVars()
 
@@ -104,7 +105,7 @@ function renderProject(project: OpenSourceProject) {
                   <n-avatar
                       size="large"
                       round
-                      src="src/assets/about/兰因.png"
+                      :src="avatar"
                       fallback-src=""
                   />
                   <div class="developer-name">郭墨渊</div>

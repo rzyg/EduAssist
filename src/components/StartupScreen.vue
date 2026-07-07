@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import logoSrc from '../assets/logo.png'
+
 defineProps<{
   status: string
   error?: boolean
@@ -13,7 +15,7 @@ const emit = defineEmits<{
   <div class="startup-overlay">
     <div class="startup-card">
       <div class="logo-wrapper">
-        <img class="startup-logo" src="/src/assets/logo.png" alt="logo">
+        <img class="startup-logo" :src="logoSrc" alt="logo">
       </div>
       <h1 class="app-name">下班工具箱</h1>
       <p v-if="!error" class="startup-status">{{ status }}</p>

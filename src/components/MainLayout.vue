@@ -7,6 +7,7 @@ import {h, ref, watch, onMounted, onUnmounted} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
 import {getApiBase} from '../config'
 import DragArea from './DragArea.vue'
+import logoSrc from '../assets/logo.png'
 
 const {message} = createDiscreteApi(['message'])
 
@@ -92,7 +93,9 @@ async function checkAlive(): Promise<boolean> {
   try {
     const res = await fetch(`${backendUrl}/health`, {signal: AbortSignal.timeout(1500)})
     return res.ok && (await res.json()).status === 'ok'
-  } catch { return false }
+  } catch {
+    return false
+  }
 }
 
 async function checkHealth() {
@@ -128,7 +131,7 @@ onUnmounted(() => {
         >
           <div class="menu-wrapper">
             <div class="sider-header">
-              <img class="logo" src="/src/assets/logo.png" alt="logo"
+              <img class="logo" :src="logoSrc" alt="logo"
                    :style="{ left: collapsed ? '20%' : '17%' }">
               <transition name="fade">
                 <p v-show="!collapsed" class="title">下班工具箱</p>
@@ -156,23 +159,76 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.sider { height: 100vh; user-select: none; }
-.main-content { height: 100vh; padding-top: 1rem; }
-.sider-content { position: relative; }
+.sider {
+  height: 100vh;
+  user-select: none;
+}
+
+.main-content {
+  height: 100vh;
+  padding-top: 1rem;
+}
+
+.sider-content {
+  position: relative;
+}
+
 .menu-wrapper {
-  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
   background: linear-gradient(180deg, #f6f6f6 0%, #f7eeff 100%);
 }
-.bottom-menu { margin-top: auto; }
-.sider-header {
-  display: flex; align-items: center; justify-content: center;
-  height: 4.5rem; overflow: hidden; position: relative;
+
+.bottom-menu {
+  margin-top: auto;
 }
-.logo { width: 2.5rem; height: 2.5rem; flex-shrink: 0; transition: all 0.3s ease; position: absolute; }
-.title { font-size: 1.25rem; font-weight: bold; margin: 0; white-space: nowrap; padding-left: 3rem; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
-.zoom-fade-enter-active, .zoom-fade-leave-active { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-.zoom-fade-enter-from { opacity: 0; transform: scale(0.95); }
-.zoom-fade-leave-to { opacity: 0; transform: scale(1.02); }
+
+.sider-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 4.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  position: absolute;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin: 0;
+  white-space: nowrap;
+  padding-left: 3rem;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+.zoom-fade-enter-active, .zoom-fade-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.zoom-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.zoom-fade-leave-to {
+  opacity: 0;
+  transform: scale(1.02);
+}
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="homepage-container">
     <div class="content-wrapper">
-      <img src="/src/assets/logo.png" alt="EduWork Assistant Logo" class="main-logo"/>
+      <img :src="logoSrc" alt="EduWork Assistant Logo" class="main-logo"/>
 
       <div class="title-section">
         <h1 class="app-title">
@@ -78,6 +78,7 @@
 import {ref} from 'vue'
 import {Compass as CompassIcon, Coffee as CoffeeIcon, Mail as MailIcon} from '@vicons/tabler'
 import {openUrl} from '@tauri-apps/plugin-opener'
+import logoSrc from '../assets/logo.png'
 
 const showCoffeeModal = ref(false)
 const showContactModal = ref(false)
