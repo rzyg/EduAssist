@@ -1,11 +1,13 @@
 <template>
-  <StartupScreen
-      v-if="initializing"
-      :status="initStatus"
-      :error="initFailed"
-      @retry="retryInit"
-  />
-  <MainLayout v-else />
+  <transition name="startup-fade" mode="out-in">
+    <StartupScreen
+        v-if="initializing"
+        :status="initStatus"
+        :error="initFailed"
+        @retry="retryInit"
+    />
+    <MainLayout v-else />
+  </transition>
 </template>
 
 <script setup lang="ts">
@@ -72,3 +74,14 @@ function retryInit() {
 
 onMounted(doInit)
 </script>
+
+<style>
+.startup-fade-enter-active,
+.startup-fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.startup-fade-enter-from,
+.startup-fade-leave-to {
+  opacity: 0;
+}
+</style>
