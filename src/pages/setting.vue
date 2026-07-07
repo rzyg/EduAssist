@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import {ref, onMounted} from 'vue'
+<script lang="ts" setup>
+import {onMounted, ref} from 'vue'
 import {useMessage} from 'naive-ui'
 import {useRouter} from 'vue-router'
 import {api} from '../config'
@@ -62,13 +62,13 @@ onMounted(loadConfig)
 <template>
   <div class="setting-container">
     <n-card title="系统设置">
-      <n-form label-placement="left" label-width="120" v-if="!loading">
+      <n-form v-if="!loading" label-placement="left" label-width="120">
         <n-divider title-position="left">服务器</n-divider>
         <n-form-item label="监听地址">
           <n-input v-model:value="serverHost" placeholder="127.0.0.1"/>
         </n-form-item>
         <n-form-item label="监听端口">
-          <n-input-number v-model:value="serverPort" :min="1" :max="65535" style="width: 160px"/>
+          <n-input-number v-model:value="serverPort" :max="65535" :min="1" style="width: 160px"/>
         </n-form-item>
 
         <n-divider title-position="left">路径</n-divider>
@@ -83,7 +83,7 @@ onMounted(loadConfig)
         </n-form-item>
 
         <n-form-item>
-          <n-button type="primary" @click="handleSave" block>
+          <n-button block type="primary" @click="handleSave">
             保存配置
           </n-button>
         </n-form-item>

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import {getCurrentWindow} from '@tauri-apps/api/window'
 
 const appWindow = getCurrentWindow()
@@ -31,13 +31,13 @@ const handleDrag = (e: MouseEvent) => {
   <div class="titlebar">
     <div class="drag-area" @mousedown="handleDrag"></div>
     <div class="controls">
-      <button class="control-btn minimize" @click="handleMinimize" title="最小化">
+      <button class="control-btn minimize" title="最小化" @click="handleMinimize">
         <span class="dot yellow-dot"></span>
       </button>
-      <button class="control-btn maximize" @click="handleMaximize" title="最大化">
+      <button class="control-btn maximize" title="最大化" @click="handleMaximize">
         <span class="dot green-dot"></span>
       </button>
-      <button class="control-btn close" @click="handleClose" title="关闭">
+      <button class="control-btn close" title="关闭" @click="handleClose">
         <span class="dot red-dot"></span>
       </button>
     </div>

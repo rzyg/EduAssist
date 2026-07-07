@@ -1,6 +1,6 @@
-<script setup lang="ts">
-import {ref, computed} from 'vue'
-import {useMessage, type UploadFileInfo} from 'naive-ui'
+<script lang="ts" setup>
+import {computed, ref} from 'vue'
+import {type UploadFileInfo, useMessage} from 'naive-ui'
 
 const props = withDefaults(defineProps<{
   cardTitle: string
@@ -247,12 +247,12 @@ function closeModal() {
   <div class="score-form-container">
     <n-modal
         v-model:show="showModal"
-        :mask-closable="false"
         :closeable="false"
+        :mask-closable="false"
+        negative-text=""
+        positive-text=""
         preset="dialog"
         title="生成成功"
-        positive-text=""
-        negative-text=""
     >
       <template #default>
         <div style="text-align: center; padding: 8px 0;">
@@ -264,7 +264,7 @@ function closeModal() {
           <n-button type="primary" @click="openFolder">
             <template #icon>
               <n-icon>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
                 </svg>
               </n-icon>
@@ -274,11 +274,11 @@ function closeModal() {
           <n-button type="success" @click="openFile">
             <template #icon>
               <n-icon>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
-                  <line x1="12" y1="18" x2="12" y2="12"/>
-                  <line x1="9" y1="15" x2="15" y2="15"/>
+                  <line x1="12" x2="12" y1="18" y2="12"/>
+                  <line x1="9" x2="15" y1="15" y2="15"/>
                 </svg>
               </n-icon>
             </template>
@@ -297,21 +297,21 @@ function closeModal() {
 
         <n-form-item label="原始成绩单" required>
           <n-upload
-              :max="1"
-              :file-list="scoreSheetFileList"
-              @change="handleScoreSheetChange"
               :custom-request="scoreSheetCustomRequest"
+              :file-list="scoreSheetFileList"
+              :max="1"
               accept=".xlsx"
               dragger
+              @change="handleScoreSheetChange"
           >
             <n-upload-dragger>
               <div style="margin-bottom: 12px">
-                <n-icon size="48" :depth="3">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <n-icon :depth="3" size="48">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/>
-                    <line x1="9" y1="15" x2="15" y2="15"/>
+                    <line x1="12" x2="12" y1="18" y2="12"/>
+                    <line x1="9" x2="15" y1="15" y2="15"/>
                   </svg>
                 </n-icon>
               </div>
@@ -385,21 +385,21 @@ function closeModal() {
 
         <n-form-item v-else label="分数线表格" required>
           <n-upload
-              :max="1"
-              :file-list="lineSheetFileList"
-              @change="handleLineSheetChange"
               :custom-request="lineSheetCustomRequest"
+              :file-list="lineSheetFileList"
+              :max="1"
               accept=".xlsx"
               dragger
+              @change="handleLineSheetChange"
           >
             <n-upload-dragger>
               <div style="margin-bottom: 12px">
-                <n-icon size="48" :depth="3">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <n-icon :depth="3" size="48">
+                  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/>
-                    <line x1="9" y1="15" x2="15" y2="15"/>
+                    <line x1="12" x2="12" y1="18" y2="12"/>
+                    <line x1="9" x2="15" y1="15" y2="15"/>
                   </svg>
                 </n-icon>
               </div>
@@ -414,7 +414,7 @@ function closeModal() {
         </n-form-item>
 
         <n-form-item>
-          <n-button class="submit-button" type="info" @click="handleSubmit" :loading="loading" block>
+          <n-button :loading="loading" block class="submit-button" type="info" @click="handleSubmit">
             {{ buttonLabel }}
           </n-button>
         </n-form-item>

@@ -74,9 +74,9 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {ref} from 'vue'
-import {Compass as CompassIcon, Coffee as CoffeeIcon, Mail as MailIcon} from '@vicons/tabler'
+import {Coffee as CoffeeIcon, Compass as CompassIcon, Mail as MailIcon} from '@vicons/tabler'
 import {openUrl} from '@tauri-apps/plugin-opener'
 import logoSrc from '../assets/logo.png'
 

@@ -1,13 +1,22 @@
-<script setup lang="ts">
-import type {MenuOption} from 'naive-ui'
+<script lang="ts" setup>
+import type {GlobalThemeOverrides, MenuOption} from 'naive-ui'
+import {createDiscreteApi, NIcon, NMessageProvider} from 'naive-ui'
 import type {Component} from 'vue'
-import type {GlobalThemeOverrides} from 'naive-ui'
-import {NMessageProvider, NIcon, createDiscreteApi} from 'naive-ui'
-import {h, ref, watch, onMounted, onUnmounted} from 'vue'
-import {useRouter, useRoute} from 'vue-router'
+import {h, onMounted, onUnmounted, ref, watch} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 import {getApiBase} from '../config'
 import DragArea from './DragArea.vue'
 import logoSrc from '../assets/logo.png'
+// ── 图标渲染 ──
+import {
+  Award as AwardIcon,
+  Book2 as PdfIcon,
+  Books as BooksIcon,
+  Businessplan as AllowanceIcon,
+  Home as HomeIcon,
+  InfoCircle as AboutIcon,
+  Settings as SettingIcon
+} from '@vicons/tabler'
 
 const {message} = createDiscreteApi(['message'])
 
@@ -36,17 +45,6 @@ const themeOverrides: GlobalThemeOverrides = {
     infoColorSuppl: '#9fa8da',
   },
 }
-
-// ── 图标渲染 ──
-import {
-  Home as HomeIcon,
-  Award as AwardIcon,
-  Books as BooksIcon,
-  Book2 as PdfIcon,
-  Businessplan as AllowanceIcon,
-  InfoCircle as AboutIcon,
-  Settings as SettingIcon
-} from '@vicons/tabler'
 
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, {default: () => h(icon)})
@@ -146,33 +144,33 @@ onUnmounted(() => {
   <n-config-provider :theme-overrides="themeOverrides">
     <n-message-provider>
       <DragArea/>
-      <n-layout has-sider class="sider">
+      <n-layout class="sider" has-sider>
         <n-layout-sider
-            bordered collapse-mode="width" :collapsed-width="64" :width="220"
-            :collapsed="collapsed" show-trigger
-            @collapse="collapsed = true" @expand="collapsed = false"
-            class="sider-content"
+            :collapsed="collapsed" :collapsed-width="64" :width="220" bordered
+            class="sider-content" collapse-mode="width"
+            show-trigger @collapse="collapsed = true"
+            @expand="collapsed = false"
         >
           <div class="menu-wrapper">
             <div class="sider-header">
-              <img class="logo" :src="logoSrc" alt="logo"
-                   :style="{ left: collapsed ? '20%' : '17%' }">
+              <img :src="logoSrc" :style="{ left: collapsed ? '20%' : '17%' }" alt="logo"
+                   class="logo">
               <transition name="fade">
                 <p v-show="!collapsed" class="title">下班工具箱</p>
               </transition>
             </div>
-            <n-menu v-model:value="activeKey" :collapsed="collapsed" :collapsed-width="64"
-                    :collapsed-icon-size="22" :options="topMenuOptions"
-                    key-field="childrenKey" label-field="childrenLabel" children-field="childrenChildren"/>
-            <n-menu v-model:value="activeKey" :collapsed="collapsed" :collapsed-width="64"
-                    :collapsed-icon-size="22" :options="bottomMenuOptions"
-                    key-field="childrenKey" label-field="childrenLabel" children-field="childrenChildren"
-                    class="bottom-menu"/>
+            <n-menu v-model:value="activeKey" :collapsed="collapsed" :collapsed-icon-size="22"
+                    :collapsed-width="64" :options="topMenuOptions"
+                    children-field="childrenChildren" key-field="childrenKey" label-field="childrenLabel"/>
+            <n-menu v-model:value="activeKey" :collapsed="collapsed" :collapsed-icon-size="22"
+                    :collapsed-width="64" :options="bottomMenuOptions"
+                    children-field="childrenChildren" class="bottom-menu" key-field="childrenKey"
+                    label-field="childrenLabel"/>
           </div>
         </n-layout-sider>
         <n-layout class="main-content">
           <router-view v-slot="{ Component }">
-            <transition name="zoom-fade" mode="out-in">
+            <transition mode="out-in" name="zoom-fade">
               <component :is="Component" :key="route.path"/>
             </transition>
           </router-view>

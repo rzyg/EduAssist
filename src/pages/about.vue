@@ -1,6 +1,6 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import {h} from 'vue'
-import {NCard, NList, NListItem, NSpace, NTag, useThemeVars, NAvatar} from 'naive-ui'
+import {NAvatar, NCard, NList, NListItem, NSpace, NTag, useThemeVars} from 'naive-ui'
 import avatar from '../assets/about/Lana_avatar.png'
 
 const themeVars = useThemeVars()
@@ -94,19 +94,19 @@ function renderProject(project: OpenSourceProject) {
 
 <template>
   <div class="info-container">
-    <n-card title="关于" :bordered="false">
+    <n-card :bordered="false" title="关于">
       <n-list>
         <n-list-item>
-          <n-space vertical :size="12">
+          <n-space :size="12" vertical>
             <div class="section-title">开发者</div>
             <div class="section-content developer-section">
               <div class="developer-layout">
                 <div class="developer-left">
                   <n-avatar
-                      size="large"
-                      round
                       :src="avatar"
                       fallback-src=""
+                      round
+                      size="large"
                   />
                   <div class="developer-name">郭墨渊</div>
                   <div class="developer-nickname">(兰因)</div>
@@ -123,7 +123,7 @@ function renderProject(project: OpenSourceProject) {
         </n-list-item>
 
         <n-list-item>
-          <n-space vertical :size="12">
+          <n-space :size="12" vertical>
             <div class="section-title">鸣谢</div>
             <div class="section-content">
               <p>
@@ -137,14 +137,14 @@ function renderProject(project: OpenSourceProject) {
         </n-list-item>
 
         <n-list-item>
-          <n-space vertical :size="12">
+          <n-space :size="12" vertical>
             <div class="section-title">开源项目清单</div>
             <div class="section-content">
               <n-list bordered>
                 <component
+                    :is="renderProject(project)"
                     v-for="project in openSourceProjects"
                     :key="project.name"
-                    :is="renderProject(project)"
                 />
               </n-list>
             </div>
@@ -152,7 +152,7 @@ function renderProject(project: OpenSourceProject) {
         </n-list-item>
 
         <n-list-item>
-          <n-space vertical :size="12">
+          <n-space :size="12" vertical>
             <div class="section-title">📄 软件许可协议 <span class="license-type">MIT License</span></div>
             <div class="section-content license-section">
               <div class="license-notice">

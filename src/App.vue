@@ -1,17 +1,17 @@
 <template>
-  <transition name="startup-fade" mode="out-in">
+  <transition mode="out-in" name="startup-fade">
     <StartupScreen
         v-if="initializing"
-        :status="initStatus"
         :error="initFailed"
+        :status="initStatus"
         @retry="retryInit"
     />
-    <MainLayout v-else />
+    <MainLayout v-else/>
   </transition>
 </template>
 
-<script setup lang="ts">
-import {ref, onMounted} from 'vue'
+<script lang="ts" setup>
+import {onMounted, ref} from 'vue'
 import {getApiBase} from './config'
 import StartupScreen from './components/StartupScreen.vue'
 import MainLayout from './components/MainLayout.vue'
@@ -25,7 +25,9 @@ async function checkAlive(): Promise<boolean> {
   try {
     const res = await fetch(`${backendUrl}/health`, {signal: AbortSignal.timeout(1500)})
     return res.ok && (await res.json()).status === 'ok'
-  } catch { return false }
+  } catch {
+    return false
+  }
 }
 
 async function doInit() {
@@ -39,8 +41,10 @@ async function doInit() {
   if (!wasAlive) {
     try {
       const {invoke} = await import('@tauri-apps/api/core')
-      invoke('start_backend').catch(() => {})
-    } catch { /* 非 Tauri 环境 */ }
+      invoke('start_backend').catch(() => {
+      })
+    } catch { /* 非 Tauri 环境 */
+    }
   }
 
   // 2. 至少播放 1.5s 动画（无论后端状态）
@@ -80,6 +84,7 @@ onMounted(doInit)
 .startup-fade-leave-active {
   transition: opacity 0.5s ease;
 }
+
 .startup-fade-enter-from,
 .startup-fade-leave-to {
   opacity: 0;
