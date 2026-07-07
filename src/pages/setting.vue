@@ -2,6 +2,7 @@
 import {ref, onMounted} from 'vue'
 import {useMessage} from 'naive-ui'
 import {useRouter} from 'vue-router'
+import {api} from '../config'
 
 const message = useMessage()
 const router = useRouter()
@@ -17,7 +18,7 @@ const pathLogs = ref('')
 async function loadConfig() {
   loading.value = true
   try {
-    const res = await fetch('http://127.0.0.1:8000/api/v1/config')
+    const res = await fetch(api('/api/v1/config'))
     if (!res.ok) throw new Error('获取配置失败')
     const data = await res.json()
     const cfg = data.config
@@ -39,7 +40,7 @@ async function handleSave() {
       server: {host: serverHost.value, port: serverPort.value},
       paths: {output: pathOutput.value, data: pathData.value, logs: pathLogs.value},
     }
-    const res = await fetch('http://127.0.0.1:8000/api/v1/config', {
+    const res = await fetch(api('/api/v1/config'), {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(body),
