@@ -185,15 +185,7 @@ pub fn run() {
             // 设置托盘
             if let Err(e) = setup_tray(app) {
                 eprintln!("托盘初始化失败: {}", e);
-            }
-
-            // 应用启动后延迟 2 秒自动拉起后端
-            let handle = app.handle().clone();
-            std::thread::spawn(move || {
-                std::thread::sleep(std::time::Duration::from_secs(2));
-                let state = handle.state::<BackendProcess>();
-                let _ = start_backend(state);
-            });
+            };
             Ok(())
         })
         .run(tauri::generate_context!())
