@@ -9,11 +9,8 @@ app = FastAPI(title="EduAssist API", version="0.1.0")
 # 配置 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:1420",
-        "tauri://localhost",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,7 +33,7 @@ if __name__ == "__main__":
     from core.config import config as app_config
 
     cfg = uvicorn.Config(
-        "core.main:app",
+        app,
         host=app_config["server"]["host"],
         port=app_config["server"]["port"],
         log_level="warning",
