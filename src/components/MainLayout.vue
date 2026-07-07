@@ -88,6 +88,8 @@ const bottomMenuOptions: MenuOption[] = [
 let backendUrl = 'http://127.0.0.1:8000'
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null
 let healthMsg: any = null
+let healthFailCount = 0
+const MAX_FAILS_BEFORE_RESTART = 3
 
 async function checkAlive(): Promise<boolean> {
   try {
@@ -100,10 +102,32 @@ async function checkAlive(): Promise<boolean> {
 
 async function checkHealth() {
   if (await checkAlive()) {
+    // 之前失联过，现在恢复了 → 给个成功提示
+    if (healthMsg) {
+      message.success('后端服务已恢复')
+    }
+    healthFailCount = 0
     healthMsg?.destroy()
     healthMsg = null
-  } else if (!healthMsg) {
-    healthMsg = message.warning('后端服务已断开，部分功能不可用', {duration: 0})
+  } else {
+    healthFailCount++
+    const remain = MAX_FAILS_BEFORE_RESTART - healthFailCount
+    const text = remain > 0
+        ? `后端连接失败，${remain} 次后将尝试重新拉起`
+        : '正在尝试重新拉起后端…'
+
+    // 销毁旧消息重建（Naive UI message 不支持动态更新 content）
+    healthMsg?.destroy()
+    healthMsg = message.warning(text, {duration: 0})
+
+    if (healthFailCount >= MAX_FAILS_BEFORE_RESTART) {
+      healthFailCount = 0
+      try {
+        const {invoke} = await import('@tauri-apps/api/core')
+        await invoke('start_backend')
+      } catch { /* 非 Tauri 环境 */
+      }
+    }
   }
 }
 
