@@ -21,3 +21,29 @@ export async function api(path: string): Promise<string> {
 export async function getApiBase(): Promise<string> {
     return resolveBase()
 }
+
+let _token: string | null = null
+
+/** 获取 Bearer Token（Tauri 环境） */
+export async function getToken(): Promise<string> {
+    if (_token !== null) return _token
+    try {
+        const {invoke} = await import('@tauri-apps/api/core')
+        _token = await invoke<string>('get_token')
+    } catch {
+        _token = ''
+    }
+    return _token
+}
+
+/** 带 Bearer Token 的 fetch 封装 */
+export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+    const url = await api(path)
+    const token = await getToken()
+    if (token) {
+        const headers = new Headers(options.headers)
+        headers.set('Authorization', `Bearer ${token}`)
+        return fetch(url, {...options, headers})
+    }
+    return fetch(url, options)
+}

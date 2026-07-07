@@ -6,16 +6,27 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::image::Image;
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
 #[cfg(windows)]
 const CREATE_NEW_CONSOLE: u32 = 0x00000010;
 
+fn generate_token() -> String {
+    let start = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    format!("{:x}", start)
+}
+
 // ── 后端进程状态 ─────────────────────────────────────────────────────────
 struct BackendProcess {
     child: Mutex<Option<Child>>,
     base_dir: PathBuf,
+    token: String,
 }
 
 // ── 开发模式下弹出一个独立的控制台窗口 ──────────────────────────────────
@@ -30,6 +41,11 @@ fn with_dev_console(cmd: &mut Command) -> &mut Command {
 }
 
 // ── Tauri 命令 ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_token(state: tauri::State<BackendProcess>) -> String {
+    state.token.clone()
+}
 
 #[tauri::command]
 fn get_mode() -> String {
@@ -62,7 +78,8 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
                     "python", "-m", "core.main",
                 ])
                 .current_dir(base_dir)
-                .env("EDUASSIST_BASE", base_dir.as_os_str()),
+                .env("EDUASSIST_BASE", base_dir.as_os_str())
+                .env("EDUASSIST_TOKEN", &state.token),
         )
         .spawn();
 
@@ -73,7 +90,8 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
                 Command::new(base_dir.join(".venv/Scripts/python.exe"))
                     .args(["-m", "core.main"])
                     .current_dir(base_dir)
-                    .env("EDUASSIST_BASE", base_dir.as_os_str()),
+                    .env("EDUASSIST_BASE", base_dir.as_os_str())
+                .env("EDUASSIST_TOKEN", &state.token),
             )
             .spawn()
         }).map_err(|e| format!("启动后端失败 (dev): {}", e))?
@@ -232,6 +250,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             get_mode,
+            get_token,
             start_backend,
             kill_backend,
             restart_backend,
@@ -239,9 +258,11 @@ pub fn run() {
         ])
         .setup(|app| {
             let base_dir = detect_base_dir(app);
+            let token = generate_token();
             app.manage(BackendProcess {
                 child: Mutex::new(None),
                 base_dir,
+                token,
             });
 
             // 设置托盘
