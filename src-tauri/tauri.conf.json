@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "eduassist",
+  "productName": "下班工具箱",
   "version": "0.1.0",
   "identifier": "fun.bbts.eduassist",
   "build": {
