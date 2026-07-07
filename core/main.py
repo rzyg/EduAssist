@@ -33,13 +33,14 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
+    from core.config import config as app_config
 
-    config = uvicorn.Config(
+    cfg = uvicorn.Config(
         "core.main:app",
-        host="127.0.0.1",
-        port=8000,
-        log_level="warning",  # 只显示 warning 及以上
-        access_log=False,  # 完全关闭访问日志
+        host=app_config["server"]["host"],
+        port=app_config["server"]["port"],
+        log_level="warning",
+        access_log=False,
     )
-    server = uvicorn.Server(config)
+    server = uvicorn.Server(cfg)
     server.run()

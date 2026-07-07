@@ -72,6 +72,7 @@ Thumbs.db
 .reasonix/
 data/
 output/
+config.yaml
 
 # Auto-generated type declarations
 auto-imports.d.ts
