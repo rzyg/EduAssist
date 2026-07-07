@@ -5,6 +5,9 @@ use tauri::Manager;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::image::Image;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Layer;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -111,7 +114,7 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
     }
 
     let child = if tauri::is_dev() {
-        println!("📍 开发环境，项目根目录: {:?}", base_dir);
+        tracing::info!("开发环境，项目根目录: {:?}", base_dir);
 
         let conda_result = with_dev_console(
             Command::new("conda")
@@ -280,8 +283,84 @@ fn detect_base_dir(app: &tauri::App) -> PathBuf {
     }
 }
 
+// ── 日志初始化 ──────────────────────────────────────────────────────────
+
+fn get_log_dir() -> PathBuf {
+    if tauri::is_dev() {
+        std::env::current_dir()
+            .unwrap_or_default()
+            .parent()
+            .unwrap_or(&std::env::current_dir().unwrap_or_default())
+            .join("logs/tauri")
+    } else {
+        std::env::current_exe()
+            .unwrap_or_default()
+            .parent()
+            .unwrap_or(&PathBuf::from("."))
+            .join("logs/tauri")
+    }
+}
+
+fn cleanup_old_logs(log_dir: &PathBuf) {
+    let Ok(entries) = std::fs::read_dir(log_dir) else { return };
+    let cutoff = std::time::SystemTime::now()
+        - std::time::Duration::from_secs(7 * 24 * 3600);
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if let Ok(metadata) = entry.metadata() {
+            if let Ok(modified) = metadata.modified() {
+                if modified < cutoff {
+                    let _ = std::fs::remove_file(&path);
+                }
+            }
+        }
+    }
+}
+
+fn setup_logging() -> tracing_appender::non_blocking::WorkerGuard {
+    let log_dir = get_log_dir();
+    std::fs::create_dir_all(&log_dir).ok();
+
+    cleanup_old_logs(&log_dir);
+
+    let file_appender = tracing_appender::rolling::RollingFileAppender::builder()
+        .rotation(tracing_appender::rolling::Rotation::DAILY)
+        .filename_prefix("tauri")
+        .filename_suffix("log")
+        .build(&log_dir)
+        .expect("failed to create file appender");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "eduassist_lib=info".into());
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(true)
+                .with_thread_ids(true)
+                .with_line_number(true)
+                .with_ansi(false)
+                .with_writer(non_blocking)
+                .with_filter(filter.clone()),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(true)
+                .with_line_number(true)
+                .with_ansi(true)
+                .with_filter(filter),
+        )
+        .init();
+
+    guard
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let _guard = setup_logging();
+    tracing::info!("Tauri 应用启动，日志目录: {:?}", get_log_dir());
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![

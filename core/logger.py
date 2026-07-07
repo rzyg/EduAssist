@@ -17,7 +17,8 @@ def setup_logging():
 
     # 文件输出（生产环境）
     from core.config import LOGS_DIR
-    log_dir = LOGS_DIR
+
+    log_dir = LOGS_DIR / "fastapi"
     log_dir.mkdir(exist_ok=True)
 
     logger.add(
