@@ -99,7 +99,7 @@ def transcript(
 
 
 @router.post("/analysis")
-def analysis_upload(
+def analysis(
     title: str = Form(..., description="分析报表标题"),
     scoreSheet: UploadFile = File(..., description="原始成绩单"),
     lineSheet: UploadFile = File(None, description="分数线表格（可选）"),

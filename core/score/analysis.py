@@ -56,6 +56,7 @@ def run_statistics(
         "历史",
         "政治",
         "地理",
+        "小语种",
     ]
     total_lines = ["清北线", "985线", "211线", "特控线", "本科线"]
     if direction == "物理":

@@ -1,149 +1,141 @@
-from core.score.models import ClassStatistics, StreamingMap
+import re
+from pathlib import Path
 from typing import List
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+from core.score.models import ClassStatistics, StreamingMap, SubjectStatistics
 from loguru import logger
-from pathlib import Path
+
+# ── 模块级常量 ──────────────────────────────────────────────────────
+
+SUBJECT_LIST = [
+    "总分",
+    "语文",
+    "数学",
+    "英语",
+    "物理",
+    "化学",
+    "生物",
+    "历史",
+    "政治",
+    "地理",
+    "小语种",
+]
+
+TOTAL_LINE = ["清北线", "985线", "211线", "特控线", "本科线"]
 
 
-def output_statistics(
-    title, statistics_list: List[ClassStatistics], direction: str, Line: StreamingMap
-) -> Path:
+# ===================================================================
+# 内部助手函数
+# ===================================================================
+
+
+def _filter_subjects(direction: str) -> List[str]:
     """
-    :param title 表名、文件名
-    :param statistics_list: 各班各科单双上线统计
-    :param direction: 选科方向
-    :param Line 分数线
-    :return: 输出单双上线统计表
+    根据选科方向返回实际有效的科目列表，移除另一方向的科目。
     """
-    # 创建表
-    wb = Workbook()
-    ws = wb.active
-    # 确保 ws 不为 None
-    if ws is None:
-        raise ValueError("无法创建工作表")
+    subjects = SUBJECT_LIST[:]
+    if direction == "物理":
+        subjects.remove("历史")
+    elif direction == "历史":
+        subjects.remove("物理")
+    return subjects
 
-    # 写入表头
-    title = title.replace("/", "") + "成绩分析"
-    write_sheet_head(ws, direction, Line)
 
-    # 写入数据
-    write_data(ws, statistics_list, direction)
-    # 设置表格样式
-    theme_excel(ws)
+def _extract_class_number(name: str) -> int:
+    """
+    从班级名中提取所有数字并转换为整数，用于排序。
+
+    例: "2510" → 2510, "2510班" → 2510, "高三1班" → 1
+    若无数字则返回 0。
+    """
+    digits = re.findall(r"\d+", name)
+    if digits:
+        return int("".join(digits))
+    return 0
+
+
+def _save_workbook(wb: Workbook, title: str, subdir: str = "成绩分析") -> Path:
+    """
+    确保输出目录存在 → 处理文件名冲突 → 保存并返回路径。
+    """
     from core.config import OUTPUT_DIR
-    # 确保目录存在
-    output_dir = OUTPUT_DIR / "成绩分析"
+
+    output_dir = OUTPUT_DIR / subdir
     output_dir.mkdir(parents=True, exist_ok=True)
+
     output_path = output_dir / f"{title}.xlsx"
-    # 检查文件是否存在，如果存在则添加时间戳
     if output_path.exists():
         from datetime import datetime
 
         timestamp = datetime.now().strftime("%H%M%S")
         output_path = output_dir / f"{title}_{timestamp}.xlsx"
         logger.info(f"文件已存在，使用新文件名: {output_path}")
+
     wb.save(output_path)
     logger.info(f"保存成功: {output_path}")
     return output_path
 
 
+# ===================================================================
+# 表头写入
+# ===================================================================
+
+
 def write_sheet_head(ws, direction: str, Line: StreamingMap):
     """
+    写入分析报表的三行表头。
+
     :param ws: 工作表
-    :param direction: 选科方向
-    :param Line: 分数线
-    :return:
+    :param direction: 选科方向（"物理" / "历史"）
+    :param Line: 分数线映射
     """
-    subject_list = [
-        "总分",
-        "语文",
-        "数学",
-        "英语",
-        "物理",
-        "化学",
-        "生物",
-        "历史",
-        "政治",
-        "地理",
-    ]
-    if direction == "物理":
-        subject_list.remove("历史")
-    elif direction == "历史":
-        subject_list.remove("物理")
-    total_line = [
-        "清北线",
-        "985线",
-        "211线",
-        "特控线",
-        "本科线",
-    ]
+    subject_list = _filter_subjects(direction)
 
     first_line = ["班级", "科目"]
     second_line = ["", ""]
     third_line = ["", "人数"]
+
     for subject in subject_list:
         first_line.extend([subject, "", "", "", ""])
-        for line in total_line:
+        for line in TOTAL_LINE:
             line_score = Line.get(f"{direction}{subject}_{line}")
             third_line.append(f"{line_score}")
 
     ws.append(first_line)
 
     for i in range(len(subject_list)):
-        second_line.extend(
-            [
-                "清北线",
-                "985线",
-                "211线",
-                "特控线",
-                "本科线",
-            ]
-        )
+        second_line.extend(TOTAL_LINE)
         ws.merge_cells(
-            f"{get_column_letter(i * 5 + 3)}{1}:{get_column_letter(i * 5 + 7)}{1}"
+            f"{get_column_letter(i * 5 + 3)}1:{get_column_letter(i * 5 + 7)}1"
         )
+
     ws.append(second_line)
     ws.append(third_line)
     ws.merge_cells("A1:A3")
     ws.merge_cells("B1:B2")
 
 
+# ===================================================================
+# 数据写入
+# ===================================================================
+
+
 def write_data(ws, statistics_list: List[ClassStatistics], direction: str):
     """
+    写入各班各科的单双上线统计数据。
+
     :param ws: 工作表
     :param statistics_list: 各班各科单双上线统计
-    :param direction: 选科方向
-    :return:
+    :param direction: 选科方向（"物理" / "历史"）
     """
-    subject_list = [
-        "总分",
-        "语文",
-        "数学",
-        "英语",
-        "物理",
-        "化学",
-        "生物",
-        "历史",
-        "政治",
-        "地理",
-    ]
-    if direction == "物理":
-        subject_list.remove("历史")
-    elif direction == "历史":
-        subject_list.remove("物理")
-    total_line = [
-        "清北线",
-        "985线",
-        "211线",
-        "特控线",
-        "本科线",
-    ]
+    subject_list = _filter_subjects(direction)
 
-    # TODO: 将班级按名字排序
+    # 按班级名中的数字从小到大排序
+    statistics_list.sort(key=lambda s: _extract_class_number(s.name))
 
     for statistics in statistics_list:
         class_name = statistics.name
@@ -152,37 +144,34 @@ def write_data(ws, statistics_list: List[ClassStatistics], direction: str):
         data: dict = statistics.get_statistics_data()
         write_info = [statistics.name, count]
         for subject in subject_list:
-            for line in total_line:
-                obj = data[f"{subject}{line}"]
+            for line in TOTAL_LINE:
+                obj = data.get(f"{subject}{line}", SubjectStatistics())
                 if line.startswith("总分"):
-                    single = obj.single | 0
-                    write_info.append(single)
+                    write_info.append(obj.single)
                 else:
-                    single = obj.single | 0
-                    double = obj.double | 0
-                    write_info.append(f"{single}/{double}")
+                    write_info.append(f"{obj.single}/{obj.double}")
         ws.append(write_info)
+
+
+# ===================================================================
+# 样式
+# ===================================================================
 
 
 def theme_excel(ws):
     """
-    为工作表添加框线和居中对齐
+    为工作表添加框线和居中对齐。
 
     :param ws: 工作表
-    :return:
     """
-    # 定义边框样式
     thin_border = Border(
         left=Side(style="thin"),
         right=Side(style="thin"),
         top=Side(style="thin"),
         bottom=Side(style="thin"),
     )
-
-    # 定义居中对齐样式
     center_alignment = Alignment(horizontal="center", vertical="center")
 
-    # 遍历所有单元格，应用边框和居中
     for row in ws.iter_rows(
         min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column
     ):
@@ -191,3 +180,34 @@ def theme_excel(ws):
             cell.alignment = center_alignment
 
     logger.debug(f"表格样式设置完成，共 {ws.max_row} 行，{ws.max_column} 列")
+
+
+# ===================================================================
+# 公开 API — 主入口
+# ===================================================================
+
+
+def output_statistics(
+    title, statistics_list: List[ClassStatistics], direction: str, Line: StreamingMap
+) -> Path:
+    """
+    输出单双上线统计表。
+
+    :param title: 表名、文件名
+    :param statistics_list: 各班各科单双上线统计
+    :param direction: 选科方向
+    :param Line: 分数线
+    :return: 输出文件路径
+    """
+    wb = Workbook()
+    ws = wb.active
+    if ws is None:
+        raise ValueError("无法创建工作表")
+
+    title = title.replace("/", "") + "成绩分析"
+
+    write_sheet_head(ws, direction, Line)
+    write_data(ws, statistics_list, direction)
+    theme_excel(ws)
+
+    return _save_workbook(wb, title)
