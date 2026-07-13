@@ -40,9 +40,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install pnpm dependencies
-        run: |
-          pnpm approve-builds --allow-all
-          pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       # ── Rust (Tauri 需要) ──────────────────────────────────
       - name: Setup Rust
