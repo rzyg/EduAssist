@@ -93,6 +93,7 @@ def create_table(
                 selecting1,
                 selecting2,
             ]
+        # FIXME: 小语种问题
         for subject in subject_list_total:
             try:
                 score = student.get_data(subject)
@@ -194,6 +195,7 @@ def create_table(
     # （可选）设置纸张方向或纸张大小
     ws.page_setup.paperSize = ws.PAPERSIZE_A4
     from core.config import OUTPUT_DIR
+
     # 确保目录存在
     output_dir = OUTPUT_DIR / "成绩单"
     output_dir.mkdir(parents=True, exist_ok=True)

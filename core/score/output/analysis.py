@@ -142,6 +142,9 @@ def write_data(ws, statistics_list: List[ClassStatistics], direction: str):
         "特控线",
         "本科线",
     ]
+
+    # TODO: 将班级按名字排序
+
     for statistics in statistics_list:
         class_name = statistics.name
         count = statistics.count

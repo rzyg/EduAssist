@@ -68,6 +68,10 @@ def extract_score(
         if "英语" not in subjects:
             logger.warning(f"{student_class}班{student_name} 没有英语科目")
             # 没有英语科目时，使用小语种代替
+
+            # FIXME: 当前小语种被错误归类为英语语种，
+            # 导致成绩分析时语言科目映射异常，需要重新设计语种分类逻辑
+
             small_score = float(
                 score_sheet.cell(row=row, column=int(map_list["小语种"])).value or 0
             )
