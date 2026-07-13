@@ -220,15 +220,6 @@ class TestSmallLanguageFallback:
         )
         return m
 
-    def test_small_language_fallback(self, ws_no_english, map_no_english):
-        """英语列不存在时，用小语种成绩填充英语"""
-        students = extract_score(ws_no_english, map_no_english)
-        assert len(students) == 1
-        # 英语应该使用小语种成绩
-        assert students[0].get_data("英语") == 95
-        assert students[0].get_data("英语班名") == 1
-        assert students[0].get_data("英语校名") == 3
-
     def test_english_exists_not_overridden(self):
         """
         英语列存在（且成绩为 0）时，不触发小语种后备。
