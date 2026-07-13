@@ -26,6 +26,18 @@ const router = createRouter({
             path: '/setting',
             name: 'setting',
             component: () => import('../pages/setting.vue')
+        }, {
+            path: '/fuck-the-online-class',
+            name: 'fuck-the-online-class',
+            component: () => import('../pages/construction.vue')
+        }, {
+            path: '/edit-pdf',
+            name: 'edit-pdf',
+            component: () => import('../pages/construction.vue')
+        }, {
+            path: '/allowance',
+            name: 'allowance',
+            component: () => import('../pages/construction.vue')
         }
     ]
 })
