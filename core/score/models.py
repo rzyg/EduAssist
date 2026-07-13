@@ -46,6 +46,12 @@ class Student:
             logger.warning(f"{context}科不存在")
             return None
 
+    def get_selection(self):
+        """
+        :return: 返回有效科目列表
+        """
+        return list(self.subjects)
+
 
 @dataclass
 class StreamingMap:
