@@ -7,7 +7,7 @@ core/score/transcript/output.py 单元测试
 """
 
 from openpyxl import load_workbook
-from core.score.output.transcript import expand_subject_abbreviation, create_table
+from core.score.output.transcript import _expand_subject_abbreviation, output_transcript
 
 
 # =============================================================================
@@ -20,35 +20,35 @@ class TestExpandSubjectAbbreviation:
 
     def test_physics_chemistry_biology(self):
         """物化生 → 物理, 化学, 生物"""
-        result = expand_subject_abbreviation("物化生")
+        result = _expand_subject_abbreviation("物化生")
         assert result == ("物理", "化学", "生物")
 
     def test_history_politics_geography(self):
         """史政地 → 历史, 政治, 地理"""
-        result = expand_subject_abbreviation("史政地")
+        result = _expand_subject_abbreviation("史政地")
         assert result == ("历史", "政治", "地理")
 
     def test_physics_chemistry_geography(self):
         """物化地 → 物理, 化学, 地理"""
-        result = expand_subject_abbreviation("物化地")
+        result = _expand_subject_abbreviation("物化地")
         assert result == ("物理", "化学", "地理")
 
     def test_return_type_is_tuple(self):
         """返回值是元组"""
-        result = expand_subject_abbreviation("物化生")
+        result = _expand_subject_abbreviation("物化生")
         assert isinstance(result, tuple)
         assert len(result) == 3
 
     def test_unknown_char_warns(self):
         """未知字符不会导致崩溃，但结果可能为空"""
-        result = expand_subject_abbreviation("XYZ")
+        result = _expand_subject_abbreviation("XYZ")
         # 未知字符被跳过
         assert len(result) == 3  # 会被 padding 为 3 个
         # 所有有效字符都被映射，无效的被忽略
 
     def test_empty_string(self):
         """空字符串不会崩溃"""
-        result = expand_subject_abbreviation("")
+        result = _expand_subject_abbreviation("")
         assert len(result) == 3
         assert result == ("", "", "")
 
@@ -131,7 +131,7 @@ class TestCreateTable:
             }
         )
 
-        output_path = create_table("测试考试", students, line_map)
+        output_path = output_transcript("测试考试", students, line_map)
         assert output_path.exists()
         wb = load_workbook(output_path)
         ws = wb.active
@@ -175,7 +175,7 @@ class TestCreateTable:
                 "语文_本科线": 90,
             }
         )
-        output_path = create_table("无选科测试", students, line_map)
+        output_path = output_transcript("无选科测试", students, line_map)
         assert output_path.exists()
         wb = load_workbook(output_path)
         ws = wb.active
@@ -213,7 +213,7 @@ class TestCreateTable:
                 "语文_本科线": 90,
             }
         )
-        output_path = create_table("单人测试", single, line_map)
+        output_path = output_transcript("单人测试", single, line_map)
         assert output_path.exists()
         wb = load_workbook(output_path)
         ws = wb.active

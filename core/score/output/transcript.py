@@ -1,16 +1,236 @@
+from loguru import logger
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Side, PatternFill
+from openpyxl.styles import Alignment, Border, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
 
-from core.score.models import StreamingMap
-from loguru import logger
-from pathlib import Path
+from core.score.models import StreamingMap, Student
+
+# ── 模块级常量 ──────────────────────────────────────────────────────
+SUBJECT_LIST_TOTAL = [
+    "总分",
+    "语文",
+    "数学",
+    "英语",
+    "物理",
+    "化学",
+    "生物",
+    "历史",
+    "政治",
+    "地理",
+]
+
+LINE_LIST = ["清北线", "985线", "211线", "特控线", "本科线"]
 
 
-def create_table(
+# ===================================================================
+# 内部助手函数
+# ===================================================================
+
+
+def _get_subject_list(students):
+    """
+    以第一名学生的考试科目代表本班选科，返回实际存在的科目列表。
+    """
+    if _get_direction(students[0]):
+        direction, selecting1, selecting2 = _expand_subject_abbreviation(
+            students[0].selection
+        )
+        return ["总分", "语文", "数学", "英语", direction, selecting1, selecting2]
+    else:
+        return SUBJECT_LIST_TOTAL[:]
+
+
+def _create_header(ws, subject_list, title):
+    """写入标题行和列头（姓名 + 各科目的分数/班名/校名）。"""
+    ws.append([title])
+
+    ws["A2"] = "姓名"
+    ws.merge_cells("A2:A3")
+    for i in range(2, len(subject_list) * 3, 3):
+        ws.cell(row=2, column=i, value=subject_list[i // 3])
+        ws.cell(row=3, column=i, value="分数")
+        ws.cell(row=3, column=i + 1, value="班名")
+        ws.cell(row=3, column=i + 2, value="校名")
+        ws.merge_cells(start_row=2, start_column=i, end_row=2, end_column=i + 2)
+
+
+def _get_direction(student):
+    """获取学生的选科方向简称（如 '物'），无选科则返回空字符串。"""
+    if student.selection:
+        direction, _, _ = _expand_subject_abbreviation(student.selection)
+        return direction
+    return ""
+
+
+def _fill_cutoff_lines(ws, subject_list, students, line):
+    """写入各分数线行（清北线 / 985线 / …）。"""
+    direction = _get_direction(students[0]) if students[0].selection else ""
+    for line_name in LINE_LIST:
+        fill_list = [line_name]
+        for score in subject_list:
+            line_key = f"{direction}{score}_{line_name}"
+            if line.has(line_key):
+                fill_list.extend([line[line_key], "", ""])
+            else:
+                logger.warning(f"分数线数据缺失: {line_key}")
+                fill_list.extend(["", "", ""])
+        ws.append(fill_list)
+
+
+def _fill_student_data(ws, students, line):
+    """写入每个学生的成绩/排名数据以及分数线过线标记行。"""
+    for index, student in enumerate(students):
+        data = [student.name]
+        direction = _get_direction(student)
+
+        # 根据选科构建当前学生的科目列表
+        if student.selection:
+            _, selecting1, selecting2 = _expand_subject_abbreviation(student.selection)
+            student_subjects = [
+                "总分",
+                "语文",
+                "数学",
+                "英语",
+                direction,
+                selecting1,
+                selecting2,
+            ]
+        else:
+            student_subjects = SUBJECT_LIST_TOTAL[:]
+
+        # 小语种问题
+        selecting_list = student.get_selection()
+        if "小语种" in selecting_list:
+            student_subjects = [
+                "小语种" if item == "英语" else item for item in student_subjects
+            ]
+
+        for subject in student_subjects:
+            try:
+                score = student.get_data(subject)
+                class_rank = student.get_data(f"{subject}班名")
+                school_rank = student.get_data(f"{subject}校名")
+                data.extend([score, class_rank, school_rank])
+            except KeyError:
+                data.extend(["", "", ""])
+
+        ws.append(data)
+
+        # 判断过线标记（按总分降序排列，在断层处插入过线行）
+        for line_name in LINE_LIST:
+            line_score = line[f"{direction}总分_{line_name}"]
+            if (
+                index < len(students) - 1
+                and student.get_data("总分") is not None
+                and students[index + 1].get_data("总分") is not None
+                and student.get_data("总分")
+                >= line_score
+                > students[index + 1].get_data("总分")
+            ):
+                ws.append([f"{line_name}过线{index + 1}人"])
+                row = ws.max_row
+                ws.merge_cells(
+                    start_row=row,
+                    start_column=1,
+                    end_row=row,
+                    end_column=ws.max_column,
+                )
+
+
+def _apply_styles(ws):
+    """为整个工作表应用对齐、边框和背景填充。"""
+    alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+    header_fill = PatternFill(
+        start_color="dbdbdb", end_color="dbdbdb", fill_type="solid"
+    )
+
+    # 合并表头（标题行）
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ws.max_column)
+    ws["A1"].alignment = alignment
+
+    # 表头行（第 2-3 行）：对齐 + 边框 + 灰色填充
+    for row in range(2, 4):
+        for col in range(1, ws.max_column + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.alignment = alignment
+            cell.border = thin_border
+            cell.fill = header_fill
+
+    # 数据行（第 4 行起）：对齐 + 边框，分数列添加灰色填充
+    for row in range(4, ws.max_row + 1):
+        for col in range(1, ws.max_column + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.alignment = alignment
+            cell.border = thin_border
+            # 分数列（每 3 列中的第 1 列）：2, 5, 8, 11, …
+            if (col - 2) % 3 == 0 and col >= 2:
+                cell.fill = header_fill
+
+
+def _auto_column_width(ws):
+    """根据单元格内容自动调整列宽。"""
+    max_col = ws.max_column
+    max_row = ws.max_row
+
+    for j in range(2, max_col + 1):
+        max_d = 1
+        for i in range(4, max_row + 1):
+            cell_value = ws.cell(i, j).value
+            if isinstance(cell_value, str):
+                d = len(cell_value.encode("utf-8"))
+            else:
+                d = len(str(cell_value))
+            if d > max_d:
+                max_d = d
+        ws.column_dimensions[get_column_letter(j)].width = max_d + 1
+
+
+def _setup_page_layout(ws):
+    """设置页边距、缩放、居中和纸张大小。"""
+    ws.page_margins = PageMargins(
+        left=0.1, right=0.1, top=0.1, bottom=0.1, header=0, footer=0
+    )
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.print_options.horizontalCentered = True
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+
+
+def _save_workbook(wb, title):
+    """确保输出目录存在 → 处理文件名冲突 → 保存并返回路径。"""
+    from core.config import OUTPUT_DIR
+
+    output_dir = OUTPUT_DIR / "成绩单"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = output_dir / f"{title}.xlsx"
+    if output_path.exists():
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime("%H%M%S")
+        output_path = output_dir / f"{title}_{timestamp}.xlsx"
+        logger.info(f"文件已存在，使用新文件名: {output_path}")
+
+    wb.save(output_path)
+    logger.info(f"保存成功: {output_path}")
+    return output_path
+
+
+# ===================================================================
+# 公开 API
+# ===================================================================
+
+
+def output_transcript(
     title,
-    students_list,
+    students_list: list[Student],
     Line: StreamingMap,
 ):
     """
@@ -24,205 +244,35 @@ def create_table(
     title = title.replace("/", "") + "成绩公示"
 
     # 判断一下选科，以第一名考试科目代表本班选科
-    subject_list_total = [
-        "总分",
-        "语文",
-        "数学",
-        "英语",
-        "物理",
-        "化学",
-        "生物",
-        "历史",
-        "政治",
-        "地理",
-    ]
-    # 移除多余科目
-    subject_list = []
-    for subject in subject_list_total:
-        if students_list[0].get_data(subject):
-            subject_list.append(subject)
+    subject_list = _get_subject_list(students_list)
 
-    # 创建表头
     wb = Workbook()
     ws = wb.active
     # 确保 ws 不为 None
     if ws is None:
         raise ValueError("无法创建工作表")
 
-    ws.append([title])
-
-    ws["A2"] = "姓名"
-    ws.merge_cells("A2:A3")
-    for i in range(2, len(subject_list) * 3, 3):
-        ws.cell(row=2, column=i, value=subject_list[i // 3])
-        ws.cell(row=3, column=i, value="分数")
-        ws.cell(row=3, column=i + 1, value="班名")
-        ws.cell(row=3, column=i + 2, value="校名")
-        ws.merge_cells(start_row=2, start_column=i, end_row=2, end_column=i + 2)
+    _create_header(ws, subject_list, title)
 
     # 填充分数线
-    line_list = ["清北线", "985线", "211线", "特控线", "本科线"]
-    for line in line_list:
-        fill_list = [line]
-        direction = ""
-        if students_list[0].selection:
-            direction, _, _ = expand_subject_abbreviation(students_list[0].selection)
-        for score in subject_list:
-            line_key = f"{direction}{score}_{line}"
-            if Line.has(line_key):
-                fill_list.extend([Line[line_key], "", ""])
-            else:
-                logger.warning(f"分数线数据缺失: {line_key}")
-                fill_list.extend(["", "", ""])
-        ws.append(fill_list)
+    _fill_cutoff_lines(ws, subject_list, students_list, Line)
 
     # 填充学生成绩和过线情况
-    for index, student in enumerate(students_list):
-        data = [student.name]
-        direction = ""
-        if student.selection:
-            direction, selecting1, selecting2 = expand_subject_abbreviation(
-                student.selection
-            )
-            subject_list_total = [
-                "总分",
-                "语文",
-                "数学",
-                "英语",
-                direction,
-                selecting1,
-                selecting2,
-            ]
-        # FIXME: 小语种问题
-        for subject in subject_list_total:
-            try:
-                score = student.get_data(subject)
-                class_rank = student.get_data(f"{subject}班名")
-                school_rank = student.get_data(f"{subject}校名")
-                data.extend([score, class_rank, school_rank])
-            except KeyError:
-                data.extend(["", "", ""])
+    _fill_student_data(ws, students_list, Line)
 
-        ws.append(data)
-        for line in line_list:
-            line_score = Line[f"{direction}总分_{line}"]
-            if (
-                index < len(students_list) - 1
-                and student.get_data("总分") is not None
-                and students_list[index + 1].get_data("总分") is not None
-                and student.get_data("总分")
-                >= line_score
-                > students_list[index + 1].get_data("总分")
-            ):
-                ws.append([f"{line}过线{index + 1}人"])
-                row = ws.max_row
-                ws.merge_cells(
-                    start_row=row, start_column=1, end_row=row, end_column=ws.max_column
-                )
-    # 合并表头
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ws.max_column)
-    # 定义样式
-    alignment = Alignment(horizontal="center", vertical="center")
-    thin_border = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin"),
-    )
-    header_fill = PatternFill(
-        start_color="dbdbdb", end_color="dbdbdb", fill_type="solid"
-    )
-    # 为数据行添加样式
-    for row in range(2, ws.max_row + 1):
-        for col in range(1, ws.max_column):
-            cell = ws.cell(row=row, column=col)
-            cell.alignment = alignment
-            cell.border = thin_border
-
-    ws["A1"].alignment = alignment
-
-    # 为表头添加样式时应用背景填充
-    for row in range(2, 4):
-        for col in range(1, ws.max_column + 1):
-            cell = ws.cell(row=row, column=col)
-            cell.alignment = alignment
-            if row > 1:  # 第一行除外都加边框
-                cell.border = thin_border
-            # 为表头添加背景填充
-            cell.fill = header_fill
-
-    # 为数据行添加样式
-    for row in range(4, ws.max_row + 1):
-        for col in range(1, ws.max_column + 1):
-            cell = ws.cell(row=row, column=col)
-            cell.alignment = alignment
-            cell.border = thin_border
-            # 为分数列(每3列中的第1列)添加背景填充
-            if (col - 2) % 3 == 0 and col >= 2:  # 分数列: 2, 5, 8, 11, 14, 17, 20
-                cell.fill = header_fill
+    # 应用样式
+    _apply_styles(ws)
 
     # 自动调整列宽
-    # 获取工作表中的最大列数
-    max_col = ws.max_column
-    # 获取工作表中的最大行数
-    max_row = ws.max_row
-
-    # 按列循环，查找每一列的最大值
-    for j in range(2, max_col + 1):
-        # 按行循环，查找当前列的最大值
-        max_d = 1  # 定义初始列宽为1
-        for i in range(4, max_row + 1):
-            cell_value = ws.cell(i, j).value
-            if isinstance(cell_value, str):  # 中文占用多个字节，需要分开处理
-                d = len(cell_value.encode("utf-8"))
-            else:
-                d = len(str(cell_value))
-
-            if d > max_d:
-                max_d = d
-
-        k = get_column_letter(j)  # 将数字转化为列名
-        ws.column_dimensions[k].width = max_d + 1
-    ws.page_margins = PageMargins(
-        left=0.1, right=0.1, top=0.1, bottom=0.1, header=0, footer=0
-    )
+    _auto_column_width(ws)
 
     # 设置页面缩放和居中
-    ws.page_setup.fitToWidth = 1  # 将所有列压缩到 1 页宽度
-    ws.page_setup.fitToHeight = 0  # 高度不限页数（0 表示自动）
+    _setup_page_layout(ws)
 
-    ws.print_options.horizontalCentered = True
-    # （可选）设置纸张方向或纸张大小
-    ws.page_setup.paperSize = ws.PAPERSIZE_A4
-    from core.config import OUTPUT_DIR
-
-    # 确保目录存在
-    output_dir = OUTPUT_DIR / "成绩单"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_path = output_dir / f"{title}.xlsx"
-    # 检查文件是否存在，如果存在则添加时间戳
-    if output_path.exists():
-        from datetime import datetime
-
-        timestamp = datetime.now().strftime("%H%M%S")
-        output_path = output_dir / f"{title}_{timestamp}.xlsx"
-        logger.info(f"文件已存在，使用新文件名: {output_path}")
-    wb.save(output_path)
-    logger.info(f"保存成功: {output_path}")
-    return output_path
+    return _save_workbook(wb, title)
 
 
-"""
-走班学生成绩映射工具
-
-处理走班制度下的成绩数据标准化问题。
-策略: 以第一名的选科组合为主选科,其他学生的缺失科目填充默认值
-例如: 第1名是物化地 → 所有学生统一映射为物化地格式
-"""
-
-
-def expand_subject_abbreviation(abbreviation: str) -> tuple[str, str, str]:
+def _expand_subject_abbreviation(abbreviation: str) -> tuple[str, str, str]:
     """
     从选科简称还原为完整科目列表
 

@@ -77,10 +77,10 @@ def transcript(
 
         # 提取学生成绩
         from core.score.extract import extract_score
-        from core.score.output.transcript import create_table
+        from core.score.output.transcript import output_transcript
 
         students_list = extract_score(score_ws, map_list)
-        output_path = create_table(title, students_list, lines)
+        output_path = output_transcript(title, students_list, lines)
 
         return {"output_path": str(output_path)}
 
