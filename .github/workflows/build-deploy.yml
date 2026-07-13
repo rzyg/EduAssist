@@ -65,7 +65,7 @@ jobs:
       # ── 构建步骤 ──────────────────────────────────────────
       - name: Build Python with Nuitka
         run: |
-          python -m nuitka --standalone --output-dir=pydist --output-filename=main --enable-plugin=no-qt --follow-imports --lto=yes --remove-output --jobs=0 core/main.py --windows-disable-console --include-package=openpyxl
+          python -m nuitka --standalone --output-dir=pydist --output-filename=main --enable-plugin=no-qt --follow-imports --lto=yes --remove-output --jobs=0 core/main.py --windows-disable-console --include-package=openpyxl --assume-yes-for-downloads
 
       - name: Build Tauri (frontend + Rust + NSIS bundle)
         # tauri build 自动执行 beforeBuildCommand（复制 pydist + 构建前端），
@@ -87,6 +87,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path "$HOME\.ssh"
           Set-Content -Path "$HOME\.ssh\deploy_key" -Value "${{ secrets.SSH_PRIVATE_KEY }}"
+          icacls "$HOME\.ssh\deploy_key" /inheritance:r /grant "$env:USERNAME:R"
 
       - name: Deploy NSIS installer via scp
         shell: powershell
