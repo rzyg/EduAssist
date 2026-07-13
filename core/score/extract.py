@@ -21,6 +21,7 @@ def extract_score(
         "语文",
         "数学",
         "英语",
+        "小语种",
         "物理",
         "化学",
         "生物",
@@ -62,31 +63,6 @@ def extract_score(
             if isinstance(score, float) and class_rank and school_rank:
                 subjects[subject] = SubjectScore(
                     score=score, class_rank=class_rank, school_rank=school_rank
-                )
-            else:
-                logger.warning(f"{student_class}班{student_name} 没有 {subject} 科目")
-        if "英语" not in subjects:
-            logger.warning(f"{student_class}班{student_name} 没有英语科目")
-            # 没有英语科目时，使用小语种代替
-
-            # FIXME: 当前小语种被错误归类为英语语种，
-            # 导致成绩分析时语言科目映射异常，需要重新设计语种分类逻辑
-
-            small_score = float(
-                score_sheet.cell(row=row, column=int(map_list["小语种"])).value or 0
-            )
-            small_class_rank = score_sheet.cell(
-                row=row, column=int(map_list["小语种班名"])
-            ).value
-            small_school_rank = score_sheet.cell(
-                row=row, column=int(map_list["小语种校名"])
-            ).value
-
-            if small_score and small_class_rank and small_school_rank:
-                subjects["英语"] = SubjectScore(
-                    score=float(small_score),
-                    class_rank=small_class_rank,
-                    school_rank=small_school_rank,
                 )
         # 读取选科
         selection = (
