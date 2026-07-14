@@ -96,7 +96,7 @@ jobs:
 
       - name: Verify Python build
         run: |
-          if (Test-Path "pydist\main.exe") {
+          if (Test-Path "pydist\main.dist\main.exe") {
             Write-Host "✅ Python build successful"
           } else {
             Write-Error "❌ pydist\main.exe not found"
