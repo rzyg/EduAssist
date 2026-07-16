@@ -128,33 +128,23 @@ jobs:
         # GITHUB_TOKEN 由 permissions 自动提供，无需显式设置
 
       - name: Deploy via rsync
-        if: success()
-        uses: easingthemes/ssh-deploy@v6.0.3
-        id: deploy
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          ARGS: '-avzr'
-          SOURCE: 'src-tauri/target/release/bundle/nsis/'
-          REMOTE_HOST: ${{ secrets.DEPLOY_HOST }}
-          REMOTE_USER: ${{ secrets.DEPLOY_USER }}
-          REMOTE_PORT: ${{ secrets.DEPLOY_PORT }}
-          TARGET: ${{ secrets.DEPLOY_TARGET }}
-          SCRIPT_BEFORE: |
-            mkdir -p ${{ secrets.DEPLOY_TARGET }}
-            echo "📁 Target directory ready"
-          SCRIPT_AFTER: |
-            echo "📁 Deployed files:"
-            ls -lh ${{ secrets.DEPLOY_TARGET }}
-            
-            if ls ${{ secrets.DEPLOY_TARGET }}/*.exe 1> /dev/null 2>&1; then
-              echo "✅ .exe file successfully deployed"
-            else
-              echo "⚠️ No .exe file found in target directory"
-            fi
-            
-            echo ""
-            echo "✅ Deployment finished at $(date '+%Y-%m-%d %H:%M:%S')"
+        shell: bash
+        run: |
+          # 创建 .ssh 目录
+          mkdir -p "$USERPROFILE/.ssh"
 
+          # 将 secret 写入密钥文件
+          SSH_KEY_PATH="$USERPROFILE/.ssh/deploy_key"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_KEY_PATH"
+
+          # 设置正确的权限（GitHub Actions 严格要求私钥权限为 600）
+          chmod 600 "$SSH_KEY_PATH"
+
+          # 执行 rsync 部署
+          rsync -avzr \
+            -e "ssh -p ${{ secrets.DEPLOY_PORT }} -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no" \
+            src-tauri/target/release/bundle/nsis/ \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_TARGET }}
       - name: Print success message
         if: success()
         shell: powershell
