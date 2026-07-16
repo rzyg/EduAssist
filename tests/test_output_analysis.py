@@ -13,6 +13,7 @@ from core.score.output.analysis import (
     output_statistics,
     write_sheet_head,
     write_data,
+    _write_data_rows,
     _filter_subjects,
     _extract_class_number,
 )
@@ -155,6 +156,57 @@ class TestWriteData:
         assert data_row[1] == 30
 
 
+class TestWriteDataSingleOnly:
+    """单上线模式数据行写入"""
+
+    @staticmethod
+    def _init_all_subjects(stats: ClassStatistics, direction: str):
+        subjects = ["总分", "语文", "数学", "英语", "物理", "化学", "生物", "政治", "地理"]
+        if direction == "物理":
+            subjects = [s for s in subjects if s != "历史"]
+        lines = ["清北线", "985线", "211线", "特控线", "本科线"]
+        for subject in subjects:
+            for line in lines:
+                stats.init_subject(f"{subject}{line}")
+
+    @pytest.fixture
+    def stats(self):
+        stats = ClassStatistics("高三1班", 50)
+        self._init_all_subjects(stats, "物理")
+        stats.increment_single("总分清北线")   # single=1
+        stats.increment_single("语文清北线")   # single=1
+        stats.increment_double("语文清北线")   # double=1
+        stats.increment_single("数学985线")    # single=1
+        return stats
+
+    def test_single_only_format(self, stats):
+        """mode='single' 只输出 single 值，不含斜杠"""
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+
+        _write_data_rows(ws, [stats], "物理", mode="single")
+
+        data_row = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
+        assert data_row[0] == "高三1班"
+        assert data_row[1] == 50
+        # 所有数据都应是数字（int），不是 "1/1" 格式
+        for val in data_row[2:]:
+            assert isinstance(val, int), f"单上线模式应输出纯数字，取到 {val!r}"
+
+    def test_single_only_missing_subject(self):
+        """mode='single' 时缺失科目不崩溃"""
+        from openpyxl import Workbook
+        stats = ClassStatistics("测试班", 30)
+        stats.init_subject("总分清北线")
+        stats.increment_single("总分清北线")
+
+        wb = Workbook()
+        ws = wb.active
+        _write_data_rows(ws, [stats], "物理", mode="single")
+        assert ws.cell(row=1, column=1).value == "测试班"
+
+
 class TestOutputStatistics:
     """完整分析报表输出"""
 
@@ -198,6 +250,18 @@ class TestOutputStatistics:
         names = [ws.cell(row=r, column=1).value for r in range(1, ws.max_row + 1)]
         assert "高三1班" in names
 
+        # 验证有两个 sheet
+        assert wb.sheetnames == ["单双上线", "单上线"]
+
+        # 验证"单上线" sheet 只包含 single 值（不含斜杠）
+        ws2 = wb["单上线"]
+        data_str = " ".join(
+            str(ws2.cell(row=r, column=c).value or "")
+            for r in range(4, ws2.max_row + 1)
+            for c in range(1, ws2.max_column + 1)
+        )
+        assert "/" not in data_str, "单上线 sheet 不应包含 / 分隔符"
+
     def test_output_classes_sorted(self, tmp_path):
         """多个班级按数字从小到大排序输出"""
         line_map = StreamingMap()
@@ -219,6 +283,11 @@ class TestOutputStatistics:
         ws = wb.active
         class_names = [ws.cell(row=r, column=1).value for r in range(4, 7)]
         assert class_names == ["高三1班", "高三2班", "高三10班"]
+
+        # 验证两个 sheet 都有排序后的数据
+        ws2 = wb["单上线"]
+        names2 = [ws2.cell(row=r, column=1).value for r in range(4, 7)]
+        assert names2 == ["高三1班", "高三2班", "高三10班"]
 
 
 # =============================================================================

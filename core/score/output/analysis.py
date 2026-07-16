@@ -124,13 +124,19 @@ def write_sheet_head(ws, direction: str, Line: StreamingMap):
 # ===================================================================
 
 
-def write_data(ws, statistics_list: List[ClassStatistics], direction: str):
+def _write_data_rows(
+    ws,
+    statistics_list: List[ClassStatistics],
+    direction: str,
+    mode: str = "both",
+):
     """
-    写入各班各科的单双上线统计数据。
+    写入各班各科的统计数据行。
 
     :param ws: 工作表
-    :param statistics_list: 各班各科单双上线统计
+    :param statistics_list: 各班各科统计
     :param direction: 选科方向（"物理" / "历史"）
+    :param mode: "both" → single/double 格式；"single" → 只写 single
     """
     subject_list = _filter_subjects(direction)
 
@@ -146,11 +152,39 @@ def write_data(ws, statistics_list: List[ClassStatistics], direction: str):
         for subject in subject_list:
             for line in TOTAL_LINE:
                 obj = data.get(f"{subject}{line}", SubjectStatistics())
-                if line.startswith("总分"):
+                if mode == "single":
+                    write_info.append(obj.single)
+                elif line.startswith("总分"):
                     write_info.append(obj.single)
                 else:
                     write_info.append(f"{obj.single}/{obj.double}")
         ws.append(write_info)
+
+
+# ===================================================================
+# 数据写入（公开 API，向后兼容）
+# ===================================================================
+
+
+class write_data:
+    """
+    ``write_data(ws, statistics_list, direction)``
+
+    写入各班各科的单双上线统计数据。
+    向后兼容的 callable 包装，调用 ``_write_data_rows(..., mode="both")``。
+    """
+
+    def __call__(self, ws, statistics_list: List[ClassStatistics], direction: str):
+        _write_data_rows(ws, statistics_list, direction, mode="both")
+
+    @classmethod
+    def single_only(cls, ws, statistics_list: List[ClassStatistics], direction: str):
+        """写入单上线统计数据（只输出 single 值，不拼接 double）。"""
+        _write_data_rows(ws, statistics_list, direction, mode="single")
+
+
+# 实例化使 ``write_data(ws, ...)`` 可调用
+write_data = write_data()
 
 
 # ===================================================================
@@ -206,8 +240,16 @@ def output_statistics(
 
     title = title.replace("/", "") + "成绩分析"
 
+    # Sheet 1: 单双上线
+    ws.title = "单双上线"
     write_sheet_head(ws, direction, Line)
     write_data(ws, statistics_list, direction)
     theme_excel(ws)
+
+    # Sheet 2: 单上线（格式相同，只写 single）
+    ws2 = wb.create_sheet(title="单上线")
+    write_sheet_head(ws2, direction, Line)
+    _write_data_rows(ws2, statistics_list, direction, mode="single")
+    theme_excel(ws2)
 
     return _save_workbook(wb, title)
