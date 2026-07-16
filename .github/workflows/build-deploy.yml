@@ -80,9 +80,9 @@ jobs:
 
       # ── 构建步骤 ──────────────────────────────────────────
       - name: Cache Nuitka build
-        uses: actions/cache@v4
+        uses: actions/cache@v5  # 注意：最新版是 v5，但 v4 也支持
         with:
-          path: build/  # Nuitka 的中间文件目录
+          path: ~\AppData\Local\Nuitka\Nuitka\Cache\
           key: ${{ runner.os }}-nuitka-${{ hashFiles('core/**/*.py', 'core/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-nuitka-
@@ -127,31 +127,47 @@ jobs:
           generate_release_notes: true
         # GITHUB_TOKEN 由 permissions 自动提供，无需显式设置
 
-      # ── 部署到服务器 ───────────────────────────────────────
-      - name: Configure SSH key
-        if: success()  # 仅当前面步骤全部成功时执行
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path "$HOME\.ssh"
-          Set-Content -Path "$HOME\.ssh\deploy_key" -Value "${{ secrets.SSH_PRIVATE_KEY }}"
-          # 设置严格的权限，防止 SSH 警告
-          icacls "$HOME\.ssh\deploy_key" /inheritance:r /grant "$env:USERNAME:R"
-
-      - name: Deploy NSIS installer via scp
+      - name: Deploy via rsync
         if: success()
-        shell: powershell
-        run: |
-          $files = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis" -File
-          if ($files.Count -eq 0) {
-            Write-Error "No installer files found in src-tauri\target\release\bundle\nsis"
-            exit 1
-          }
-          foreach ($file in $files) {
-            scp -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=NUL -P 9022 -i "$HOME\.ssh\deploy_key" `
-              $file.FullName `
-              ecs-user@ea-docs.bbts.fun:/home/ecs-user/www/eduassist/
-          }
+        uses: easingthemes/ssh-deploy@v6.0.3
+        id: deploy
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          ARGS: '-avzr'
+          SOURCE: 'src-tauri/target/release/bundle/nsis/'
+          REMOTE_HOST: ${{ secrets.DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.DEPLOY_USER }}
+          REMOTE_PORT: ${{ secrets.DEPLOY_PORT }}
+          TARGET: ${{ secrets.DEPLOY_TARGET }}
+          SCRIPT_BEFORE: |
+            mkdir -p ${{ secrets.DEPLOY_TARGET }}
+            echo "📁 Target directory ready"
+          SCRIPT_AFTER: |
+            echo "📁 Deployed files:"
+            ls -lh ${{ secrets.DEPLOY_TARGET }}
+            
+            if ls ${{ secrets.DEPLOY_TARGET }}/*.exe 1> /dev/null 2>&1; then
+              echo "✅ .exe file successfully deployed"
+            else
+              echo "⚠️ No .exe file found in target directory"
+            fi
+            
+            echo ""
+            echo "✅ Deployment finished at $(date '+%Y-%m-%d %H:%M:%S')"
 
       - name: Print success message
         if: success()
-        run: echo "✅ Build and deployment finished at $(Get-Date)"
+        shell: powershell
+        run: |
+          Write-Host "✅ Build and deployment finished at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+      - name: Check deployment status
+        if: always()
+        shell: powershell
+        run: |
+          if ("${{ steps.deploy.outcome }}" -eq "success") {
+            Write-Host "✅ Deployment succeeded"
+          } else {
+            Write-Error "❌ Deployment failed"
+            exit 1
+          }
