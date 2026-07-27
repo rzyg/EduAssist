@@ -188,7 +188,6 @@ onUnmounted(() => {
 
 .main-content {
   height: 100vh;
-  padding-top: 1rem;
 }
 
 .sider-content {
@@ -251,6 +250,5 @@ onUnmounted(() => {
 
 .zoom-fade-leave-to {
   opacity: 0;
-  transform: scale(1.02);
 }
 </style>

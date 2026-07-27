@@ -295,7 +295,7 @@ function closeModal() {
       </template>
     </n-modal>
 
-    <n-card :title="cardTitle">
+    <n-card :title="cardTitle" style="height: 100vh;padding-top: 1rem">
       <n-form label-placement="left" label-width="120">
         <n-form-item label="考试名称" required>
           <n-input v-model:value="title" placeholder="请输入考试名称"/>
