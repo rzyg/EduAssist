@@ -31,8 +31,12 @@ const router = createRouter({
             name: 'fuck-the-online-class',
             component: () => import('../pages/construction.vue')
         }, {
-            path: '/edit-pdf',
-            name: 'edit-pdf',
+            path: '/merge',
+            name: 'merge',
+            component: () => import('../pages/pdf/merge.vue')
+        }, {
+            path: '/split',
+            name: 'split',
             component: () => import('../pages/construction.vue')
         }, {
             path: '/allowance',

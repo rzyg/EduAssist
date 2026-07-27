@@ -73,7 +73,13 @@ const topMenuOptions: MenuOption[] = [
     ],
   },
   {childrenLabel: '刷课', childrenKey: 'fuck-the-online-class', icon: renderIcon(BooksIcon)},
-  {childrenLabel: 'PDF编辑', childrenKey: 'edit-pdf', icon: renderIcon(PdfIcon)},
+  {
+    childrenLabel: 'PDF编辑', childrenKey: 'edit-pdf', icon: renderIcon(PdfIcon),
+    childrenChildren: [
+      {childrenLabel: '合并', childrenKey: 'merge'},
+      {childrenLabel: '拆分', childrenKey: 'split'},
+    ],
+  },
   {childrenLabel: '津贴', childrenKey: 'allowance', icon: renderIcon(AllowanceIcon)},
 ]
 
