@@ -94,7 +94,7 @@ function renderProject(project: OpenSourceProject) {
 
 <template>
   <div class="info-container">
-    <n-card :bordered="false" title="关于">
+    <n-card :bordered="false" title="关于" style="margin-top: 1rem;">
       <n-list>
         <n-list-item>
           <n-space :size="12" vertical>

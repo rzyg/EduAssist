@@ -166,7 +166,7 @@ onUnmounted(() => {
               </transition>
             </div>
             <n-menu v-model:value="activeKey" :collapsed="collapsed" :collapsed-icon-size="22"
-                    :collapsed-width="64" :options="topMenuOptions"
+                    :collapsed-width="64" :options="topMenuOptions" :accordion="true"
                     children-field="childrenChildren" key-field="childrenKey" label-field="childrenLabel"/>
             <n-menu v-model:value="activeKey" :collapsed="collapsed" :collapsed-icon-size="22"
                     :collapsed-width="64" :options="bottomMenuOptions"
