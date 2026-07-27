@@ -19,7 +19,7 @@ def setup_logging():
     from core.config import LOGS_DIR
 
     log_dir = LOGS_DIR / "fastapi"
-    log_dir.mkdir(exist_ok=True)
+    log_dir.mkdir(exist_ok=True, parents=True)
 
     logger.add(
         sink=log_dir / "log_{time}.log",
