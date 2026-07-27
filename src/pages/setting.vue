@@ -148,7 +148,7 @@ onMounted(loadConfig)
 
 <template>
   <div class="setting-container">
-    <n-card title="系统设置">
+    <n-card title="系统设置" style="padding-top: 1rem;height: 100vh">
       <n-form v-if="!loading" label-placement="left" label-width="120">
         <n-divider title-position="left">服务器</n-divider>
         <n-form-item label="监听地址">
@@ -195,7 +195,8 @@ onMounted(loadConfig)
         @positive-click="confirmSaveAndRestart"
         @negative-click="showConfirm = false"
     >
-      {{serverHost !== origHost || serverPort !== origPort || devMode !== origDevMode
+      {{
+        serverHost !== origHost || serverPort !== origPort || devMode !== origDevMode
             ? '服务器配置已变更，保存后将重启后端。确认？'
             : '确认保存配置？'
       }}
@@ -217,10 +218,3 @@ onMounted(loadConfig)
     </n-modal>
   </div>
 </template>
-
-<style scoped>
-.setting-container {
-  max-width: 640px;
-  margin: 0 auto;
-}
-</style>
