@@ -110,14 +110,16 @@ def split(
 def compress(
     pdf_file: UploadFile = File(..., description="PDF文件"),
     file_name: str = Form(..., description="输出文件名"),
-    compression_level: str = Form("medium", description="压缩等级: low / medium / high"),
+    preset: str = Form("moderate", description="压缩预设: mild / moderate / aggressive / extreme"),
+    advanced_options: str = Form(None, description="高级选项 JSON，覆盖预设值"),
 ):
     """
-    上传单个PDF压缩
+    上传单个PDF压缩，支持预设方案 + 高级选项。
 
     :param pdf_file: 要压缩的PDF
     :param file_name: 输出文件名（不含扩展名）
-    :param compression_level: 压缩等级（low/medium/high）
+    :param preset: 压缩预设（mild / moderate / aggressive / extreme）
+    :param advanced_options: 高级选项 JSON，可选覆盖预设中的参数
     :return: 压缩后的 PDF 文件路径
     """
     # 获取文件名
@@ -130,13 +132,34 @@ def compress(
         # 创建临时文件
         tmp_path = save_upload_file(pdf_file)
 
-        # 压缩PDF
-        from core.pdf.compress import compress as compress_pdf
+        # 解析预设和高级选项
+        from core.pdf.compress import (
+            resolve_preset,
+            merge_options,
+            compress_with_options,
+            CompressOptions,
+        )
 
-        output_path = compress_pdf(tmp_path, file_name, compression_level)
+        opts = resolve_preset(preset)
+
+        # 如果传了高级选项，合并覆盖
+        if advanced_options:
+            try:
+                overrides = json.loads(advanced_options)
+                if not isinstance(overrides, dict):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="advanced_options 必须是 JSON 对象",
+                    )
+                opts = merge_options(opts, overrides)
+            except json.JSONDecodeError:
+                raise HTTPException(
+                    status_code=400, detail="advanced_options 不是有效的 JSON 格式"
+                )
+
+        output_path = compress_with_options(tmp_path, file_name, opts)
         return {"output_path": str(output_path)}
     except HTTPException:
-        # 直接抛出的 HTTP 异常
         raise
     except Exception as e:
         logger.error(f"处理失败: {e}", exc_info=True)
