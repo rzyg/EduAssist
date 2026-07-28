@@ -5,7 +5,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-    # 手动触发时，允许输入自定义 Tag 名称用于发布
     inputs:
       tag_name:
         description: 'Release Tag (e.g., v1.0.0)'
@@ -16,13 +15,13 @@ jobs:
   build-and-deploy:
     runs-on: windows-latest
     permissions:
-      contents: write  # 授予创建 Release 的权限
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 获取所有历史，确保 Tag 信息完整
+          fetch-depth: 0
 
       # ── Python ─────────────────────────────────────────────
       - name: Setup Python
@@ -53,7 +52,7 @@ jobs:
       - name: Install pnpm dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      # ── Rust (Tauri 需要) ──────────────────────────────────
+      # ── Rust ──────────────────────────────────────────────
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
@@ -73,14 +72,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: src-tauri/target
-          # 仅对关键文件计算哈希，避免缓存永久失效
           key: ${{ runner.os }}-tauri-${{ hashFiles('src-tauri/Cargo.toml', 'src-tauri/Cargo.lock', 'src-tauri/src/**/*.rs') }}
           restore-keys: |
             ${{ runner.os }}-tauri-
 
-      # ── 构建步骤 ──────────────────────────────────────────
+      # ── 构建 ──────────────────────────────────────────────
       - name: Cache Nuitka build
-        uses: actions/cache@v5  # 注意：最新版是 v5，但 v4 也支持
+        uses: actions/cache@v5
         with:
           path: ~\AppData\Local\Nuitka\Nuitka\Cache\
           key: ${{ runner.os }}-nuitka-${{ hashFiles('core/**/*.py', 'core/requirements.txt') }}
@@ -119,32 +117,47 @@ jobs:
 
       # ── 发布到 GitHub Release ──────────────────────────────
       - name: Upload NSIS installer to GitHub Release
-        # 仅在推送 Tag 时运行，手动触发时跳过（避免缺少 Tag 报错）
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: src-tauri/target/release/bundle/nsis/*.exe
           generate_release_notes: true
-        # GITHUB_TOKEN 由 permissions 自动提供，无需显式设置
 
-      - name: Deploy via rsync
+      # ── 部署到远程服务器（使用 scp 替代 rsync）─────────────
+      - name: Deploy via scp
+        id: deploy                     # 添加 id 以便后续状态检查引用
         shell: bash
         run: |
           # 创建 .ssh 目录
           mkdir -p "$USERPROFILE/.ssh"
 
-          # 将 secret 写入密钥文件
+          # 写入私钥
           SSH_KEY_PATH="$USERPROFILE/.ssh/deploy_key"
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_KEY_PATH"
-
-          # 设置正确的权限（GitHub Actions 严格要求私钥权限为 600）
           chmod 600 "$SSH_KEY_PATH"
 
-          # 执行 rsync 部署
-          rsync -avzr \
-            -e "ssh -p ${{ secrets.DEPLOY_PORT }} -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no" \
-            src-tauri/target/release/bundle/nsis/ \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_TARGET }}
+          # 查找生成的安装包（假设只有一个 .exe 文件）
+          INSTALLER=$(ls src-tauri/target/release/bundle/nsis/*.exe | head -1)
+          if [ -z "$INSTALLER" ]; then
+            echo "❌ No installer found"
+            exit 1
+          fi
+          echo "📦 Uploading: $INSTALLER"
+
+          # 使用 scp 上传到远程目标目录
+          scp -P ${{ secrets.DEPLOY_PORT }} \
+              -i "$SSH_KEY_PATH" \
+              -o StrictHostKeyChecking=no \
+              "$INSTALLER" \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_TARGET }}/
+
+          # 可选：验证远程文件是否存在
+          ssh -p ${{ secrets.DEPLOY_PORT }} \
+              -i "$SSH_KEY_PATH" \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "ls -lh ${{ secrets.DEPLOY_TARGET }}/$(basename "$INSTALLER") && echo '✅ Deployment successful'"
+
       - name: Print success message
         if: success()
         shell: powershell
