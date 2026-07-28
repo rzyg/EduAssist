@@ -106,6 +106,47 @@ def split(
             os.unlink(tmp_path)
 
 
+@router.post("/compress")
+def compress(
+    pdf_file: UploadFile = File(..., description="PDF文件"),
+    file_name: str = Form(..., description="输出文件名"),
+    compression_level: str = Form("medium", description="压缩等级: low / medium / high"),
+):
+    """
+    上传单个PDF压缩
+
+    :param pdf_file: 要压缩的PDF
+    :param file_name: 输出文件名（不含扩展名）
+    :param compression_level: 压缩等级（low/medium/high）
+    :return: 压缩后的 PDF 文件路径
+    """
+    # 获取文件名
+    original_filename = pdf_file.filename
+    if not original_filename:
+        raise HTTPException(status_code=400, detail="文件名不能为空")
+
+    tmp_path = None
+    try:
+        # 创建临时文件
+        tmp_path = save_upload_file(pdf_file)
+
+        # 压缩PDF
+        from core.pdf.compress import compress as compress_pdf
+
+        output_path = compress_pdf(tmp_path, file_name, compression_level)
+        return {"output_path": str(output_path)}
+    except HTTPException:
+        # 直接抛出的 HTTP 异常
+        raise
+    except Exception as e:
+        logger.error(f"处理失败: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # 清理临时文件
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
 def save_upload_file(scoreSheet: UploadFile) -> str:
     """
     从上传的文件中创建临时文件

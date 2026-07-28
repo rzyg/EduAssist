@@ -39,6 +39,10 @@ const router = createRouter({
             name: 'split',
             component: () => import('../pages/pdf/split.vue')
         }, {
+            path: '/compress',
+            name: 'compress',
+            component: () => import('../pages/pdf/compress.vue')
+        }, {
             path: '/allowance',
             name: 'allowance',
             component: () => import('../pages/construction.vue')
