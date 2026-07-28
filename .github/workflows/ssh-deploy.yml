@@ -1,0 +1,49 @@
+name: Test Remote Connection (SSH + rsync)
+
+on:
+  workflow_dispatch:
+  # 手动触发，无额外输入
+
+jobs:
+  test-connection:
+    runs-on: windows-latest
+    steps:
+      # 1. 准备 SSH 私钥
+      - name: Setup SSH key
+        shell: bash
+        run: |
+          mkdir -p "$USERPROFILE/.ssh"
+          SSH_KEY_PATH="$USERPROFILE/.ssh/deploy_key"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_KEY_PATH"
+          chmod 600 "$SSH_KEY_PATH"
+
+      # 2. 测试 SSH 连接（执行远程命令）
+      - name: Test SSH connection
+        shell: bash
+        run: |
+          SSH_KEY_PATH="$USERPROFILE/.ssh/deploy_key"
+          ssh -p ${{ secrets.DEPLOY_PORT }} \
+              -i "$SSH_KEY_PATH" \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "echo '✅ SSH connection successful'; whoami; hostname"
+
+      # 3. 测试 rsync 传输（复制一个空文件）
+      - name: Test rsync transfer
+        shell: bash
+        run: |
+          SSH_KEY_PATH="$USERPROFILE/.ssh/deploy_key"
+          # 创建一个测试文件
+          echo "Test file content" > test.txt
+          # 执行 rsync 同步到远程目标目录（请确保目标目录存在且有写权限）
+          rsync -avzr \
+            -e "ssh -p ${{ secrets.DEPLOY_PORT }} -i \"$SSH_KEY_PATH\" -o StrictHostKeyChecking=no" \
+            test.txt \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_TARGET }}/test_upload.txt
+
+          # 可选：验证远程文件是否存在（使用 ssh 检查）
+          ssh -p ${{ secrets.DEPLOY_PORT }} \
+              -i "$SSH_KEY_PATH" \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+              "ls -lh ${{ secrets.DEPLOY_TARGET }}/test_upload.txt && echo '✅ File uploaded successfully'"
