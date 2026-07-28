@@ -64,10 +64,16 @@ const presets: PresetDef[] = [
 // ── 预设对应的默认高级选项 ─────────────────────────────────────────────────
 
 const presetDefaults: Record<string, any> = {
-  mild:     {stream_level: 2, image_quality: null, convert_all_to_jpg: false, max_dimension: null, remove_metadata: false},
+  mild: {stream_level: 2, image_quality: null, convert_all_to_jpg: false, max_dimension: null, remove_metadata: false},
   moderate: {stream_level: 3, image_quality: 70, convert_all_to_jpg: false, max_dimension: null, remove_metadata: true},
-  aggressive: {stream_level: 3, image_quality: 50, convert_all_to_jpg: true, max_dimension: 1600, remove_metadata: true},
-  extreme:  {stream_level: 3, image_quality: 30, convert_all_to_jpg: true, max_dimension: 800, remove_metadata: true},
+  aggressive: {
+    stream_level: 3,
+    image_quality: 50,
+    convert_all_to_jpg: true,
+    max_dimension: 1600,
+    remove_metadata: true
+  },
+  extreme: {stream_level: 3, image_quality: 30, convert_all_to_jpg: true, max_dimension: 800, remove_metadata: true},
 }
 
 // ── 状态 ────────────────────────────────────────────────────────────────────
@@ -92,15 +98,6 @@ const advRemoveMeta = ref<boolean | null>(null)
 
 // 当前预设的默认值（用于重置高级选项时的基准）
 const currentPresetDefaults = computed(() => presetDefaults[selectedPreset.value])
-
-// 是否有高级覆写
-const hasAdvancedOverrides = computed(() => {
-  return advStreamLevel.value !== null
-    || advImageQuality.value !== null
-    || advConvertAll.value !== null
-    || advMaxDimension.value !== null
-    || advRemoveMeta.value !== null
-})
 
 const selectedWarning = computed(() => {
   return presets.find(p => p.key === selectedPreset.value)?.warning || ''
