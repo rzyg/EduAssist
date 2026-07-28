@@ -1,5 +1,33 @@
 <template>
   <div class="pdf-split-container">
+    <n-modal
+        v-model:show="showSplitModal"
+        :closeable="false"
+        :mask-closable="false"
+        preset="dialog"
+        title="拆分成功"
+    >
+      <template #default>
+        <div style="text-align: center; padding: 8px 0;">
+          <n-text depth="3" style="font-size: 13px; word-break: break-all;">
+            {{ outputFolder }}
+          </n-text>
+        </div>
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 16px;">
+          <n-button type="primary" @click="openSplitFolder">
+            <template #icon>
+              <n-icon>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </n-icon>
+            </template>
+            打开文件夹
+          </n-button>
+          <n-button @click="closeSplitModal">关闭</n-button>
+        </div>
+      </template>
+    </n-modal>
     <n-card :title="cardTitle" style="height: 100vh; padding-top: 1rem">
       <!-- 未上传文件时显示拖拽区域 -->
       <div v-if="!pdfFile" class="upload-area">
@@ -177,12 +205,12 @@
 </template>
 
 <script lang="ts" setup>
-import {ref, nextTick, watch} from 'vue'
+import {ref, nextTick, watch, onMounted} from 'vue'
 import {type UploadFileInfo, useMessage} from 'naive-ui'
 import {Add, Close, ArrowBack, ArrowForward} from '@vicons/ionicons5'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import {getToken} from '../../config'
+import {api, getToken} from '../../config'
 
 // 配置 PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
@@ -191,9 +219,14 @@ const props = withDefaults(defineProps<{
   apiEndpoint?: string
 }>(), {
   cardTitle: 'PDF 拆分',
-  apiEndpoint: '/api/v1/pdf/split'
+  apiEndpoint: ''
 })
-
+const actualApiEndpoint = ref(props.apiEndpoint)
+onMounted(async () => {
+  if (!props.apiEndpoint) {
+    actualApiEndpoint.value = await api('/api/v1/pdf/split')
+  }
+})
 const message = useMessage()
 
 // 状态
@@ -356,13 +389,13 @@ async function handleSplit() {
       start: range.start,
       end: range.end,
     }))
-    formData.append('split_ranges', JSON.stringify(rangesData))
+    formData.append('split_ranges_str', JSON.stringify(rangesData))
 
     const token = await getToken()
     const headers = new Headers()
     if (token) headers.set('Authorization', `Bearer ${token}`)
 
-    const response = await fetch(props.apiEndpoint, {
+    const response = await fetch(actualApiEndpoint.value, {
       method: 'POST',
       headers,
       body: formData
@@ -375,6 +408,8 @@ async function handleSplit() {
 
     const result = await response.json()
     message.success(`拆分成功！共生成 ${result.file_count || splitRanges.value.length} 个文件`)
+    outputFolder.value = result.output_path
+    showSplitModal.value = true
   } catch (error: any) {
     message.error(`拆分失败：${error.message}`)
   } finally {
@@ -390,6 +425,25 @@ watch(pageCount, (newCount) => {
     })
   }
 })
+
+
+// 拆分成功弹窗
+const showSplitModal = ref(false)
+const outputFolder = ref('')
+
+async function openSplitFolder() {
+  try {
+    const {openPath} = await import('@tauri-apps/plugin-opener')
+    await openPath(outputFolder.value)
+  } catch (e: any) {
+    message.error(`打开文件夹失败：${e.message || e}`)
+  }
+}
+
+// 关闭弹窗
+function closeSplitModal() {
+  showSplitModal.value = false
+}
 </script>
 
 <style scoped>
