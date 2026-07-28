@@ -1,8 +1,14 @@
+"""
+PDF 压缩 — 基于 ocrmypdf 的有损/无损优化。
+
+仅使用 ocrmypdf 的压缩/优化功能，跳过 OCR 识别步骤（skip_text=True）。
+底层依赖 Ghostscript 进行 PDF 重写和流压缩。
+"""
 from datetime import datetime
 from pathlib import Path
 from typing import Union
 
-import pikepdf
+import ocrmypdf
 from loguru import logger
 
 from core.config import OUTPUT_DIR
@@ -23,7 +29,7 @@ def _compressed_pdf_save_path(file_name: str) -> Path:
 
 def _resolve_compression_level(level: Union[int, str]) -> int:
     """
-    将压缩等级统一转换为 pikepdf 可用的整数 (0-9)。
+    将压缩等级统一转换为整数 (0-9)。
 
     支持字符串: "low" / "medium" / "high"
     也直接接受整数 0-9。
@@ -35,12 +41,49 @@ def _resolve_compression_level(level: Union[int, str]) -> int:
             logger.warning(f"未知压缩等级 '{level}'，使用默认 'medium'(5)")
         return resolved
 
-    # 整数范围钳制
     if level < 0:
         return 0
     if level > 9:
         return 9
     return level
+
+
+def _level_to_ocrmypdf_params(level: int) -> dict:
+    """
+    将 0-9 整数等级映射为 ocrmypdf.ocr() 的参数。
+
+    等级划分:
+      0        — 不压缩（optimize=0，仅复制）
+      1-3      — 轻度压缩（optimize=1，无损优化 + 高 JPEG 质量）
+      4-6      — 中等压缩（optimize=2，有损优化 + 中度 JPEG 质量）
+      7-9      — 激进压缩（optimize=3，激进有损 + 低 JPEG 质量）
+    """
+    if level == 0:
+        return {
+            "optimize": 0,
+            "output_type": "pdf",
+        }
+
+    if level <= 3:
+        return {
+            "optimize": 1,
+            "jpg_quality": 85,
+            "output_type": "pdf",
+        }
+
+    if level <= 6:
+        return {
+            "optimize": 2,
+            "jpg_quality": 65,
+            "output_type": "pdf",
+        }
+
+    # level 7-9
+    return {
+        "optimize": 3,
+        "jpg_quality": 35,
+        "output_type": "pdf",
+    }
 
 
 def compress(
@@ -49,10 +92,12 @@ def compress(
     compression_level: Union[int, str] = 5,
 ) -> Path:
     """
-    压缩 PDF 文件。
+    压缩 PDF 文件（跳过 OCR）。
 
-    使用 pikepdf 进行流压缩（FlateDecode）、资源清理。
-    不同压缩等级控制是否压缩流及清理未引用资源。
+    使用 ocrmypdf 的优化管线：
+      1. 通过 Ghostscript 重写 PDF 流（FlateDecode / JPEG 压缩）
+      2. 按等级控制 optimize 级别和图片质量
+      3. 跳过 OCR 识别步骤（skip_text=True）
 
     Args:
         pdf_path: 源 PDF 文件路径
@@ -66,6 +111,7 @@ def compress(
 
     Raises:
         FileNotFoundError: PDF 文件不存在
+        ocrmypdf.MissingDependencyError: Ghostscript 或 Tesseract 未安装
     """
     pdf_path = Path(pdf_path)
     if not pdf_path.exists():
@@ -75,25 +121,27 @@ def compress(
 
     # 读取原文件信息
     original_size = pdf_path.stat().st_size
-    logger.info(f"开始压缩: {pdf_path.name} (大小={original_size / 1024:.1f}KB, 等级={level})")
+    logger.info(
+        f"开始压缩: {pdf_path.name} (大小={original_size / 1024:.1f}KB, 等级={level})"
+    )
 
-    with pikepdf.open(pdf_path) as pdf:
-        total_pages = len(pdf.pages)
-        save_path = _compressed_pdf_save_path(file_name)
+    save_path = _compressed_pdf_save_path(file_name)
 
-        # 根据压缩等级配置压缩行为
-        compress_streams = level > 0          # 等级>=1 时压缩流
-        clean_resources = level >= 4           # 等级>=4 时清理未引用资源
+    # 构建 ocrmypdf 参数
+    ocr_params = _level_to_ocrmypdf_params(level)
+    ocr_params["skip_text"] = True  # 跳过 OCR 识别
+    ocr_params["progress_bar"] = False
 
-        # 清理未引用资源（在 save 前调用）
-        if clean_resources:
-            pdf.remove_unreferenced_resources()
+    # 调用 ocrmypdf 进行压缩
+    exit_code = ocrmypdf.ocr(
+        str(pdf_path),
+        str(save_path),
+        **ocr_params,
+    )
 
-        pdf.save(
-            save_path,
-            compress_streams=compress_streams,
-            object_stream_mode=pikepdf.ObjectStreamMode.generate,
-            recompress_flate=compress_streams,
+    if exit_code != ocrmypdf.ExitCode.ok:
+        raise RuntimeError(
+            f"ocrmypdf 返回非正常退出码 {exit_code}，压缩可能未完成"
         )
 
     # 计算压缩前后大小对比
@@ -101,7 +149,7 @@ def compress(
     ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
     logger.info(
         f"压缩完成: {original_size / 1024:.1f}KB → {compressed_size / 1024:.1f}KB "
-        f"({ratio:+.1f}%) 共 {total_pages} 页"
+        f"({ratio:+.1f}%)"
     )
 
     return save_path

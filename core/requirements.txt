@@ -14,6 +14,7 @@ playwright==1.51.0         # 自动化（刷课模块）
 pypdf==5.4.0               # 合并、拆分、旋转、提取文字
 reportlab==4.3.1           # 从零生成 PDF
 pikepdf==9.5.0             # 高级压缩、无损优化、修复损坏 PDF
+ocrmypdf>=16.0.0           # PDF 压缩优化（需 Ghostscript 支持）
 
 # ========== Excel 读写 ==========
 openpyxl==3.1.5            # 读写 Excel（.xlsx）
