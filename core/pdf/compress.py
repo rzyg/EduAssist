@@ -2,14 +2,16 @@
 PDF 压缩 — 基于 pikepdf 的无损/有损优化。
 
 零外部程序依赖：pikepdf 的 wheel 已内嵌编译好的 qpdf 引擎，开箱即用。
-不同压缩等级控制流压缩、对象去重和资源清理的激进程度。
+对于含 JPEG 图像的 PDF，中/高等级会自动降品质重压缩，显著减小体积。
 """
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Union
 
 import pikepdf
 from loguru import logger
+from PIL import Image
 
 from core.config import OUTPUT_DIR
 
@@ -30,9 +32,6 @@ def _compressed_pdf_save_path(file_name: str) -> Path:
 def _resolve_compression_level(level: Union[int, str]) -> int:
     """
     将压缩等级统一转换为整数 (0-9)。
-
-    支持字符串: "low" / "medium" / "high"
-    也直接接受整数 0-9。
     """
     if isinstance(level, str):
         level_map = {"low": 1, "medium": 5, "high": 9}
@@ -40,12 +39,59 @@ def _resolve_compression_level(level: Union[int, str]) -> int:
         if level.lower() not in level_map:
             logger.warning(f"未知压缩等级 '{level}'，使用默认 'medium'(5)")
         return resolved
-
     if level < 0:
         return 0
     if level > 9:
         return 9
     return level
+
+
+# ── 图像重压缩 ──────────────────────────────────────────────────────────────
+
+
+def _recompress_page_images(
+    page: pikepdf.Page, jpg_quality: int
+) -> None:
+    """
+    对页面中 DCTDecode（JPEG）图像进行降品质重压缩。
+    跳过小图像（< 2000 字节，避免 overhead 超过收益）。
+    """
+    xobjects = getattr(page.Resources, "XObject", None)
+    if xobjects is None:
+        return
+
+    for name in list(xobjects.keys()):
+        obj = xobjects[name]
+        if obj.get("/Subtype") != pikepdf.Name.Image:
+            continue
+
+        # 只处理 DCTDecode (JPEG) 图像
+        filt = obj.get("/Filter")
+        if filt != pikepdf.Name.DCTDecode:
+            continue
+
+        try:
+            raw = obj.read_raw_bytes()
+            if len(raw) < 2000:  # 小图像跳过
+                continue
+
+            pil_img = Image.open(BytesIO(raw))
+            if pil_img.mode in ("RGBA", "P"):
+                pil_img = pil_img.convert("RGB")
+
+            buf = BytesIO()
+            pil_img.save(
+                buf, format="JPEG", quality=jpg_quality, optimize=True
+            )
+            new_data = buf.getvalue()
+
+            if new_data and len(new_data) < len(raw):
+                obj.write(new_data, filter=pikepdf.Name.DCTDecode)
+        except Exception as exc:
+            logger.debug(f"跳过图像 '{name}' 重压缩: {exc}")
+
+
+# ── 主函数 ──────────────────────────────────────────────────────────────────
 
 
 def compress(
@@ -56,21 +102,19 @@ def compress(
     """
     压缩 PDF 文件。
 
-    使用 pikepdf（qpdf 引擎）进行流压缩和资源优化。
-    所有等级都纯 Python 实现，不依赖任何外部可执行程序。
+    使用 pikepdf（qpdf 引擎）进行流压缩和图像优化。
+    纯 Python 实现，不依赖任何外部可执行程序。
 
-    等级划分:
-      0      — 仅复制，不做任何压缩
-      low    — 启用 FlateDecode 流压缩（无损）
-      medium — 流压缩 + 清理未引用资源 + 对象流打包
-      high   — 流压缩 + 资源清理 + 内容流重压缩 + 线性化
+    等级:
+      0      — 仅复制
+      low    — FlateDecode 流压缩（无损）
+      medium — 流压缩 + JPEG 图像重压缩 quality=65 + 资源清理
+      high   — 流压缩 + JPEG 重压缩 quality=35/25/15 + 资源清理
 
     Args:
         pdf_path: 源 PDF 文件路径
         file_name: 输出文件名（不含扩展名）
-        compression_level: 压缩等级。
-            整数 0-9，0=不压缩、9=最大压缩；
-            字符串 "low" / "medium" / "high"。
+        compression_level: 压缩等级
 
     Returns:
         压缩后的文件路径
@@ -114,7 +158,7 @@ def _run_compression(source: Path, target: Path, level: int) -> None:
             )
         return
 
-    # ── 等级 1-3：轻度压缩（流压缩） ──────────────────────────────
+    # ── 等级 1-3：轻度（无损流压缩） ──────────────────────────────
     if level <= 3:
         with pikepdf.open(source) as pdf:
             pdf.save(
@@ -124,22 +168,36 @@ def _run_compression(source: Path, target: Path, level: int) -> None:
             )
         return
 
-    # ── 等级 4-6：中度压缩（流压缩 + 资源清理） ──────────────────
+    # ── 等级 4-6：中度（流压缩 + JPEG 重压缩 quality=65 + 资源清理）
     if level <= 6:
-        with pikepdf.open(source) as pdf:
-            pdf.remove_unreferenced_resources()
-            pdf.save(
-                target,
-                compress_streams=True,
-                object_stream_mode=pikepdf.ObjectStreamMode.generate,
-            )
+        _compress_with_images(source, target, jpg_quality=65)
         return
 
-    # ── 等级 7-9：激进压缩 ─────────────────────────────────────────
-    # 先做第一次保存（含资源清理），再打开重压缩内容流
+    # ── 等级 7-9：激进（流压缩 + JPEG 重压缩 + 资源清理 + 内容流重压缩）
+    #    等级越高 JPEG 质量越低
+    quality_map = {7: 50, 8: 35, 9: 20}
+    _compress_with_images(source, target, jpg_quality=quality_map[level])
+
+
+def _compress_with_images(
+    source: Path, target: Path, jpg_quality: int
+) -> None:
+    """
+    执行含图像重压缩的优化流程。
+
+    流程：
+      1. 打开源文件
+      2. 遍历每页，重压缩 JPEG 图像
+      3. 清理未引用资源
+      4. 保存（compress_streams 压缩非图像流）
+      5. 第二次打开，重压缩内容流（recompress_flate）
+    """
     tmp = target.with_suffix(".tmp.pdf")
     try:
+        # 第一遍：图像重压缩 + 资源清理
         with pikepdf.open(source) as pdf:
+            for page in pdf.pages:
+                _recompress_page_images(page, jpg_quality)
             pdf.remove_unreferenced_resources()
             pdf.save(
                 tmp,
@@ -147,13 +205,13 @@ def _run_compression(source: Path, target: Path, level: int) -> None:
                 object_stream_mode=pikepdf.ObjectStreamMode.generate,
             )
 
-        # 第二次打开：重压缩内容流
+        # 第二遍：内容流重压缩
         with pikepdf.open(tmp) as pdf:
             pdf.save(
                 target,
                 compress_streams=True,
                 object_stream_mode=pikepdf.ObjectStreamMode.generate,
-                stream_decode_level=pikepdf.StreamDecodeLevel.specialized,
+                recompress_flate=True,
             )
     finally:
         tmp.unlink(missing_ok=True)

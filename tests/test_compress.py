@@ -169,3 +169,74 @@ class TestCompress:
             assert result.exists(), f"字符串等级 '{level_str}' 失败"
             reader = PdfReader(result)
             assert len(reader.pages) == 3
+
+
+# =============================================================================
+# 测试 JPEG 图像重压缩
+# =============================================================================
+@pytest.fixture
+def pdf_with_jpeg(tmp_path: Path) -> Path:
+    """生成一个含 JPEG 图像的 PDF（3 页，每页一张大图）"""
+    from io import BytesIO
+    from PIL import Image
+    import img2pdf
+
+    pdf_path = tmp_path / "with_jpeg.pdf"
+    images = []
+    for i in range(3):
+        img = Image.new("RGB", (1200, 800), (i * 50 + 30, 100, 200))
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=95)
+        buf.seek(0)
+        images.append(buf)
+    pdf_bytes = img2pdf.convert(images)
+    pdf_path.write_bytes(pdf_bytes)
+    return pdf_path
+
+
+class TestJpegRecompression:
+    def test_high_smaller_than_low(
+        self, pdf_with_jpeg: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """含图像的 PDF：high 等级应比 low 等级显著更小"""
+        monkeypatch.setattr("core.pdf.compress.OUTPUT_DIR", tmp_path)
+
+        result_low = compress(str(pdf_with_jpeg), "jpg_low", "low")
+        result_high = compress(str(pdf_with_jpeg), "jpg_high", "high")
+
+        size_low = result_low.stat().st_size
+        size_high = result_high.stat().st_size
+
+        # high 必须比 low 至少小 10%
+        ratio = size_high / size_low
+        assert ratio < 0.90, (
+            f"high({size_high}B) 应显著小于 low({size_low}B), "
+            f"实际 ratio={ratio:.2%}"
+        )
+
+    def test_output_still_valid(
+        self, pdf_with_jpeg: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        """含图像的 PDF 压缩后仍是合法且可读的 PDF"""
+        monkeypatch.setattr("core.pdf.compress.OUTPUT_DIR", tmp_path)
+
+        result = compress(str(pdf_with_jpeg), "jpg_valid", "high")
+        assert result.exists()
+
+        # 用 pikepdf 重新打开验证
+        import pikepdf as pk
+        with pk.open(result) as pdf:
+            assert len(pdf.pages) == 3
+            for page in pdf.pages:
+                xobj = getattr(page.Resources, "XObject", None)
+                if xobj:
+                    for name in xobj.keys():
+                        obj = xobj[name]
+                        if obj.get("/Subtype") == pk.Name.Image:
+                            # 图像应有正确的 /Filter
+                            assert obj.get("/Filter") == pk.Name.DCTDecode, (
+                                f"{name} 缺少 DCTDecode 过滤器"
+                            )
+                            # 应能读出像素数据
+                            raw = obj.read_raw_bytes()
+                            assert len(raw) > 0
