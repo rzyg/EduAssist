@@ -37,7 +37,7 @@ const router = createRouter({
         }, {
             path: '/split',
             name: 'split',
-            component: () => import('../pages/construction.vue')
+            component: () => import('../pages/pdf/split.vue')
         }, {
             path: '/allowance',
             name: 'allowance',
