@@ -17,6 +17,10 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 const CREATE_NEW_CONSOLE: u32 = 0x00000010;
 
+/// 不创建控制台窗口（用于生产环境的子进程）
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 fn generate_token() -> String {
     let start = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -43,6 +47,17 @@ fn with_dev_console(cmd: &mut Command) -> &mut Command {
     cmd
 }
 
+/// 抑制控制台窗口（用于生产环境子进程）
+#[cfg(windows)]
+fn with_no_window(cmd: &mut Command) -> &mut Command {
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
+}
+#[cfg(not(windows))]
+fn with_no_window(cmd: &mut Command) -> &mut Command {
+    cmd
+}
+
 // ── Tauri 命令 ──────────────────────────────────────────────────────────
 
 /// 强制杀死进程树（Windows 用 taskkill，其他平台用 kill）
@@ -52,6 +67,7 @@ fn kill_process_tree(child: &mut Child) {
         let pid = child.id();
         let _ = Command::new("taskkill")
             .args(["/F", "/T", "/PID", &pid.to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .and_then(|mut c| c.wait());
     }
@@ -127,7 +143,7 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
 
         conda_result.or_else(|_| {
             println!("⚠️ conda 启动失败，尝试直接使用 python");
-            with_dev_console(
+            with_no_window(
                 Command::new(base_dir.join(".venv/Scripts/python.exe"))
                     .args(["-m", "core.main"])
                     .current_dir(base_dir)
@@ -144,12 +160,14 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
             return Err(format!("后端程序不存在: {:?}", exe_path));
         }
 
-        Command::new(exe_path)
-            .current_dir(base_dir)
-            .env("EDUASSIST_BASE", base_dir.as_os_str())
-            .env("EDUASSIST_TOKEN", token)
-            .spawn()
-            .map_err(|e| format!("启动后端失败: {}", e))?
+        with_no_window(
+            Command::new(exe_path)
+                .current_dir(base_dir)
+                .env("EDUASSIST_BASE", base_dir.as_os_str())
+                .env("EDUASSIST_TOKEN", token),
+        )
+        .spawn()
+        .map_err(|e| format!("启动后端失败: {}", e))?
     };
 
     *guard = Some(child);
@@ -361,7 +379,7 @@ fn setup_logging() -> tracing_appender::non_blocking::WorkerGuard {
 pub fn run() {
     let _guard = setup_logging();
     tracing::info!("Tauri 应用启动，日志目录: {:?}", get_log_dir());
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -388,8 +406,26 @@ pub fn run() {
             };
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    // 注册退出事件 → 杀死后端 + 清理日志
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            tracing::info!("应用退出，清理后端进程");
+            if let Some(state) = app_handle.try_state::<BackendProcess>() {
+                if let Ok(mut guard) = state.child.lock() {
+                    if let Some(ref mut child) = *guard {
+                        kill_process_tree(child);
+                        let _ = child.wait();
+                    }
+                }
+            }
+            // 清理日志目录
+            let log_dir = get_log_dir();
+            let _ = std::fs::remove_dir_all(&log_dir);
+        }
+    });
 }
 
 // ── 原 greet 命令（保留）───────────────────────────────────────────────

@@ -45,8 +45,8 @@
         ]
       }
     },
-    "resources": {
-      "./core": "core"
-    }
+    "resources": [
+      "core/**/*"
+    ]
   }
 }
