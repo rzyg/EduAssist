@@ -43,6 +43,10 @@ const router = createRouter({
             name: 'compress',
             component: () => import('../pages/pdf/compress.vue')
         }, {
+            path: '/edit',
+            name: 'edit',
+            component: () => import('../pages/pdf/edit.vue')
+        }, {
             path: '/allowance',
             name: 'allowance',
             component: () => import('../pages/construction.vue')

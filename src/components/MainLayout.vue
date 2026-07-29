@@ -79,6 +79,7 @@ const topMenuOptions: MenuOption[] = [
       {childrenLabel: '合并', childrenKey: 'merge'},
       {childrenLabel: '拆分', childrenKey: 'split'},
       {childrenLabel: '压缩', childrenKey: 'compress'},
+      {childrenLabel: '编辑', childrenKey: 'edit'},
     ],
   },
   {childrenLabel: '津贴', childrenKey: 'allowance', icon: renderIcon(AllowanceIcon)},
