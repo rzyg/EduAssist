@@ -8,10 +8,31 @@
     />
     <MainLayout v-else/>
   </transition>
+
+  <!-- 更新弹窗 -->
+  <n-modal
+      v-model:show="showUpdateModal"
+      title="发现新版本"
+      preset="dialog"
+      positive-text="立即更新"
+      negative-text="稍后提醒"
+      :mask-closable="false"
+      @positive-click="handleUpdate"
+      @negative-click="showUpdateModal = false"
+  >
+    <template #default>
+      <div style="margin-bottom: 12px;">
+        <span style="font-weight: 600; font-size: 16px;">版本 {{ updateInfo?.version }}</span>
+        <span style="margin-left: 8px; color: #888; font-size: 13px;">当前版本 {{ currentVersion }}</span>
+      </div>
+      <div style="white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #555;">{{ updateInfo?.changelog }}</div>
+      <div v-if="downloading" style="margin-top: 12px; color: #1890ff;">正在下载更新…</div>
+    </template>
+  </n-modal>
 </template>
 
 <script lang="ts" setup>
-import {onMounted, ref} from 'vue'
+import {onMounted, ref, nextTick} from 'vue'
 import {getApiBase} from './config'
 import StartupScreen from './components/StartupScreen.vue'
 import MainLayout from './components/MainLayout.vue'
@@ -20,6 +41,55 @@ const initializing = ref(true)
 const initFailed = ref(false)
 const initStatus = ref('')
 let backendUrl = 'http://127.0.0.1:8000'
+
+// ── 自动更新 ──────────────────────────────────────────────────────────
+interface UpdateInfo {
+  version: string
+  changelog: string
+  download_url: string
+}
+const currentVersion = ref('')
+const updateInfo = ref<UpdateInfo | null>(null)
+const showUpdateModal = ref(false)
+const downloading = ref(false)
+const VERSION_CHECK_URL = 'https://alist.bbts.fun/d/下班工具箱/.version.json'
+
+async function checkForUpdate() {
+  try {
+    const {invoke} = await import('@tauri-apps/api/core')
+    currentVersion.value = await invoke('get_app_version') as string
+    const res = await fetch(VERSION_CHECK_URL, {signal: AbortSignal.timeout(5000)})
+    if (!res.ok) return
+    const remote: UpdateInfo = await res.json()
+    if (remote.version && compareVersions(remote.version, currentVersion.value) > 0) {
+      updateInfo.value = remote
+      showUpdateModal.value = true
+    }
+  } catch { /* 静默忽略 */ }
+}
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = pa[i] || 0, nb = pb[i] || 0
+    if (na > nb) return 1
+    if (na < nb) return -1
+  }
+  return 0
+}
+
+async function handleUpdate() {
+  if (!updateInfo.value?.download_url) return
+  downloading.value = true
+  try {
+    const {invoke} = await import('@tauri-apps/api/core')
+    await invoke('download_and_install', {url: updateInfo.value.download_url})
+  } catch (e) {
+    console.error('更新失败:', e)
+    downloading.value = false
+    showUpdateModal.value = false
+  }
+}
 
 async function checkAlive(): Promise<boolean> {
   try {
@@ -54,6 +124,7 @@ async function doInit() {
   // 3. 1.5s 后检测是否在线
   if (await checkAlive()) {
     initializing.value = false
+    nextTick(() => checkForUpdate())
     return
   }
 
@@ -63,6 +134,7 @@ async function doInit() {
     await new Promise(r => setTimeout(r, 1000))
     if (await checkAlive()) {
       initializing.value = false
+      nextTick(() => checkForUpdate())
       return
     }
   }

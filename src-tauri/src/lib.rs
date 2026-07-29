@@ -192,6 +192,46 @@ fn restart_backend(state: tauri::State<BackendProcess>) -> Result<String, String
     start_backend(state)
 }
 
+#[tauri::command]
+fn get_app_version(app: tauri::AppHandle) -> String {
+    app.config().version.clone().unwrap_or_default()
+}
+
+#[tauri::command]
+async fn download_and_install(
+    url: String,
+    state: tauri::State<'_, BackendProcess>,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let tmp_dir = std::env::temp_dir().join("eduassist_update.exe");
+    tracing::info!("下载更新包: {} → {:?}", url, tmp_dir);
+
+    let resp = ureq::get(&url)
+        .call()
+        .map_err(|e| format!("下载失败: {}", e))?;
+
+    let body = resp
+        .into_body()
+        .read_to_vec()
+        .map_err(|e| format!("读取响应失败: {}", e))?;
+
+    std::fs::write(&tmp_dir, &body).map_err(|e| format!("写入文件失败: {}", e))?;
+
+    let _ = Command::new(&tmp_dir)
+        .arg("/S")
+        .spawn()
+        .map_err(|e| format!("启动安装包失败: {}", e))?;
+
+    let mut guard = state.child.lock().map_err(|e| e.to_string())?;
+    if let Some(ref mut child) = *guard {
+        kill_process_tree(child);
+        let _ = child.wait();
+    }
+
+    app.exit(0);
+    Ok("更新中…".to_string())
+}
+
 // ── 托盘图标 & 窗口关闭 → 隐藏 ──────────────────────────────────────────
 
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -389,7 +429,9 @@ pub fn run() {
             start_backend,
             kill_backend,
             restart_backend,
-            get_backend_url
+            get_backend_url,
+            get_app_version,
+            download_and_install
         ])
         .setup(|app| {
             let base_dir = detect_base_dir(app);
