@@ -12,7 +12,7 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import {PDFDocument, rgb} from 'pdf-lib'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-defineProps<{cardTitle?: string}>()
+defineProps<{ cardTitle?: string }>()
 const message = useMessage()
 
 // =============================================================================
@@ -29,9 +29,14 @@ interface PageData {
 interface Annotation {
   id: string
   type: 'rect' | 'ellipse' | 'text' | 'image'
-  x: number; y: number; width: number; height: number
+  x: number;
+  y: number;
+  width: number;
+  height: number
   content?: string
-  strokeColor: string; fillColor: string; strokeWidth: number
+  strokeColor: string;
+  fillColor: string;
+  strokeWidth: number
 }
 
 // =============================================================================
@@ -48,10 +53,22 @@ const loading = ref(false)
 
 // 标注按页存储
 const annotationsMap = ref<Record<number, Annotation[]>>({})
-function getAnnotations(p: number): Annotation[] { return annotationsMap.value[p] || [] }
-function setAnnotations(p: number, list: Annotation[]) { annotationsMap.value[p] = list }
-function getCurrent(): Annotation[] { return getAnnotations(currentPage.value) }
-function setCurrent(list: Annotation[]) { setAnnotations(currentPage.value, list) }
+
+function getAnnotations(p: number): Annotation[] {
+  return annotationsMap.value[p] || []
+}
+
+function setAnnotations(p: number, list: Annotation[]) {
+  annotationsMap.value[p] = list
+}
+
+function getCurrent(): Annotation[] {
+  return getAnnotations(currentPage.value)
+}
+
+function setCurrent(list: Annotation[]) {
+  setAnnotations(currentPage.value, list)
+}
 
 const activeTool = ref<string>('select')
 const selectedAnnotId = ref<string | null>(null)
@@ -80,7 +97,10 @@ const showStylePanel = ref(false)
 
 // 未保存风险追踪
 const dirty = ref(false)
-function markDirty() { dirty.value = true }
+
+function markDirty() {
+  dirty.value = true
+}
 
 // =============================================================================
 // 计算
@@ -100,7 +120,7 @@ const colorOptions = ['#1890ff', '#52c41a', '#fa8c16', '#f5222d', '#722ed1', '#0
 // PDF 加载
 // =============================================================================
 
-function handlePdfChange({fileList}: {fileList: UploadFileInfo[]}) {
+function handlePdfChange({fileList}: { fileList: UploadFileInfo[] }) {
   pdfFileList.value = fileList
   if (fileList.length > 0 && fileList[0].file) {
     pdfFile.value = fileList[0].file
@@ -108,12 +128,13 @@ function handlePdfChange({fileList}: {fileList: UploadFileInfo[]}) {
   }
 }
 
-function createCustomRequest(fileRef: {value: File | null}) {
-  return ({file, onFinish}: {file: UploadFileInfo; onFinish: () => void}) => {
+function createCustomRequest(fileRef: { value: File | null }) {
+  return ({file, onFinish}: { file: UploadFileInfo; onFinish: () => void }) => {
     if (file.file) fileRef.value = file.file
     onFinish()
   }
 }
+
 const pdfCustomRequest = createCustomRequest(pdfFile)
 
 async function loadPdf() {
@@ -131,12 +152,14 @@ async function loadPdf() {
       const tScale = 0.25, pScale = 1.2
       const tv = page.getViewport({scale: tScale})
       const tc = document.createElement('canvas')
-      tc.width = tv.width; tc.height = tv.height
+      tc.width = tv.width;
+      tc.height = tv.height
       await (page.render({canvasContext: tc.getContext('2d')!, viewport: tv} as any)).promise
 
       const pv = page.getViewport({scale: pScale})
       const pc = document.createElement('canvas')
-      pc.width = pv.width; pc.height = pv.height
+      pc.width = pv.width;
+      pc.height = pv.height
       await (page.render({canvasContext: pc.getContext('2d')!, viewport: pv} as any)).promise
 
       pages.value.push({
@@ -187,7 +210,7 @@ const _resizeHandler = () => syncOverlay()
 // (resize listener 注册在 onMounted 中)
 
 // 从鼠标事件获取 overlay canvas 坐标
-function getCanvasPos(e: MouseEvent): {x: number; y: number} {
+function getCanvasPos(e: MouseEvent): { x: number; y: number } {
   const overlay = overlayCanvasRef.value
   if (!overlay) return {x: 0, y: 0}
   const r = overlay.getBoundingClientRect()
@@ -196,7 +219,7 @@ function getCanvasPos(e: MouseEvent): {x: number; y: number} {
 
 // ── 自然坐标 ↔ 显示坐标 转换 ──────────────────────────────────────────
 // 标注以自然图像像素存储（固定），渲染时缩放到当前显示尺寸
-function _natToDisplay(nat: {x: number; y: number; w?: number; h?: number; width?: number; height?: number}) {
+function _natToDisplay(nat: { x: number; y: number; w?: number; h?: number; width?: number; height?: number }) {
   const ov = overlayCanvasRef.value
   const ns = imgNaturalSize.value
   if (!ov || !ns.w || !ns.h) return {x: nat.x, y: nat.y, w: (nat.w ?? nat.width ?? 0), h: (nat.h ?? nat.height ?? 0)}
@@ -205,7 +228,8 @@ function _natToDisplay(nat: {x: number; y: number; w?: number; h?: number; width
   const h = nat.h ?? nat.height ?? 0
   return {x: nat.x * sx, y: nat.y * sy, w: w * sx, h: h * sy}
 }
-function _displayToNat(display: {x: number; y: number}) {
+
+function _displayToNat(display: { x: number; y: number }) {
   const ov = overlayCanvasRef.value
   const ns = imgNaturalSize.value
   if (!ov || !ns.w || !ns.h) return display
@@ -286,10 +310,13 @@ function onOverlayMouseDown(e: MouseEvent) {
         return
       }
     }
-    selectedAnnotId.value = null; renderAnnotations()
+    selectedAnnotId.value = null;
+    renderAnnotations()
     return
   }
-  drawing.value = true; drawStart.value = pos; selectedAnnotId.value = null
+  drawing.value = true;
+  drawStart.value = pos;
+  selectedAnnotId.value = null
 }
 
 function onOverlayMouseMove(e: MouseEvent) {
@@ -308,42 +335,71 @@ function onOverlayMouseMove(e: MouseEvent) {
   const overlay = overlayCanvasRef.value
   if (!overlay) return
   const ctx = overlay.getContext('2d')!
-  const x = Math.min(drawStart.value.x, pos.x); const y = Math.min(drawStart.value.y, pos.y)
-  const w = Math.abs(pos.x - drawStart.value.x); const h = Math.abs(pos.y - drawStart.value.y)
+  const x = Math.min(drawStart.value.x, pos.x);
+  const y = Math.min(drawStart.value.y, pos.y)
+  const w = Math.abs(pos.x - drawStart.value.x);
+  const h = Math.abs(pos.y - drawStart.value.y)
   ctx.clearRect(0, 0, overlay.width, overlay.height)
   renderAnnotations()
   ctx.strokeStyle = stylePrefs.value.strokeColor
-  ctx.lineWidth = stylePrefs.value.strokeWidth; ctx.setLineDash([5, 5])
+  ctx.lineWidth = stylePrefs.value.strokeWidth;
+  ctx.setLineDash([5, 5])
   ctx.fillStyle = _hexToRgba(stylePrefs.value.fillColor, fillOpacity.value)
-  if (activeTool.value === 'rect') { ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h) }
-  else if (activeTool.value === 'ellipse') {
-    ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
-    ctx.fill(); ctx.stroke()
+  if (activeTool.value === 'rect') {
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h)
+  } else if (activeTool.value === 'ellipse') {
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+    ctx.fill();
+    ctx.stroke()
   }
   ctx.setLineDash([])
 }
 
 function onOverlayMouseUp() {
-  if (draggingAnnot.value) { draggingAnnot.value = null; return }
-  if (!drawing.value) return; drawing.value = false
+  if (draggingAnnot.value) {
+    draggingAnnot.value = null;
+    return
+  }
+  if (!drawing.value) return;
+  drawing.value = false
   if (!_lastPos) return
-  const w = Math.abs(_lastPos.x - drawStart.value.x); const h = Math.abs(_lastPos.y - drawStart.value.y)
+  const w = Math.abs(_lastPos.x - drawStart.value.x);
+  const h = Math.abs(_lastPos.y - drawStart.value.y)
   if (w < 5 && h < 5) return
   // 转换为自然坐标存储
-  const rawX = Math.min(drawStart.value.x, _lastPos.x); const rawY = Math.min(drawStart.value.y, _lastPos.y)
+  const rawX = Math.min(drawStart.value.x, _lastPos.x);
+  const rawY = Math.min(drawStart.value.y, _lastPos.y)
   const nat = _displayToNat({x: rawX, y: rawY})
   const natSize = _displayToNat({x: rawX + w, y: rawY + h})
-  const natW = natSize.x - nat.x; const natH = natSize.y - nat.y
-  const id = genId(); const {strokeColor, fillColor, strokeWidth} = stylePrefs.value
+  const natW = natSize.x - nat.x;
+  const natH = natSize.y - nat.y
+  const id = genId();
+  const {strokeColor, fillColor, strokeWidth} = stylePrefs.value
   const anns = [...getCurrent()]
-  anns.push({id, type: activeTool.value as 'rect' | 'ellipse', x: nat.x, y: nat.y, width: natW, height: natH, strokeColor, fillColor, strokeWidth})
+  anns.push({
+    id,
+    type: activeTool.value as 'rect' | 'ellipse',
+    x: nat.x,
+    y: nat.y,
+    width: natW,
+    height: natH,
+    strokeColor,
+    fillColor,
+    strokeWidth
+  })
   setCurrent(anns)
-  selectedAnnotId.value = id; markDirty(); renderAnnotations()
+  selectedAnnotId.value = id;
+  markDirty();
+  renderAnnotations()
 }
 
 let _lastPos = {x: 0, y: 0}
+
 function onOverlayMouseMoveWithLast(e: MouseEvent) {
-  _lastPos = getCanvasPos(e); onOverlayMouseMove(e)
+  _lastPos = getCanvasPos(e);
+  onOverlayMouseMove(e)
 }
 
 function _hitTest(a: Annotation, x: number, y: number): boolean {
@@ -352,11 +408,16 @@ function _hitTest(a: Annotation, x: number, y: number): boolean {
 }
 
 function _hexToRgba(hex: string, alpha: number): string {
-  const c = hex.replace('#', ''); const r = parseInt(c.slice(0, 2), 16)
-  const g = parseInt(c.slice(2, 4), 16); const b = parseInt(c.slice(4, 6), 16)
+  const c = hex.replace('#', '');
+  const r = parseInt(c.slice(0, 2), 16)
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16)
   return `rgba(${r},${g},${b},${alpha})`
 }
-function genId(): string { return `ann_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` }
+
+function genId(): string {
+  return `ann_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+}
 
 // =============================================================================
 // 键盘操作
@@ -366,10 +427,17 @@ function onKeyDown(e: KeyboardEvent) {
   if ((e.key === 'Delete' || e.key === 'Backspace') && selectedAnnotId.value) {
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName || '')) return
     setCurrent(getCurrent().filter(a => a.id !== selectedAnnotId.value))
-    selectedAnnotId.value = null; markDirty(); renderAnnotations()
+    selectedAnnotId.value = null;
+    markDirty();
+    renderAnnotations()
   }
-  if (e.key === 'Escape') { activeTool.value = 'select'; selectedAnnotId.value = null; renderAnnotations() }
+  if (e.key === 'Escape') {
+    activeTool.value = 'select';
+    selectedAnnotId.value = null;
+    renderAnnotations()
+  }
 }
+
 onMounted(() => {
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('resize', _resizeHandler)
@@ -395,8 +463,12 @@ function rotatePage(index: number) {
 }
 
 function deletePage(index: number) {
-  if (pages.value.length <= 1) { message.warning('至少保留一页'); return }
-  pages.value.splice(index, 1); pageCount.value--
+  if (pages.value.length <= 1) {
+    message.warning('至少保留一页');
+    return
+  }
+  pages.value.splice(index, 1);
+  pageCount.value--
   const newMap: Record<number, Annotation[]> = {}
   for (const k of Object.keys(annotationsMap.value)) {
     const ki = Number(k)
@@ -404,12 +476,14 @@ function deletePage(index: number) {
   }
   annotationsMap.value = newMap
   if (currentPage.value >= pageCount.value) currentPage.value = pageCount.value - 1
-  markDirty(); message.success(`已删除第 ${index + 1} 页`)
+  markDirty();
+  message.success(`已删除第 ${index + 1} 页`)
 }
 
 
 function selectPage(index: number) {
-  currentPage.value = index; selectedAnnotId.value = null
+  currentPage.value = index;
+  selectedAnnotId.value = null
   nextTick(() => {
     syncOverlay()
     const items = thumbnailListRef.value?.querySelectorAll('.thumbnail-item')
@@ -422,27 +496,47 @@ function selectPage(index: number) {
 // =============================================================================
 
 function onDragStart(e: DragEvent, index: number) {
-  if (dirty.value && !window.confirm('当前有未保存的修改，重新排序将放弃修改？')) { e.preventDefault(); return }
-  dragIndex.value = index; e.dataTransfer!.effectAllowed = 'move'; e.dataTransfer!.setData('text/plain', String(index))
+  dragIndex.value = index;
+  e.dataTransfer!.effectAllowed = 'move';
+  e.dataTransfer!.setData('text/plain', String(index))
 }
-function onDragOver(e: DragEvent, index: number) { e.preventDefault(); dragOverIndex.value = index }
-function onDragLeave() { dragOverIndex.value = null }
+
+function onDragOver(e: DragEvent, index: number) {
+  e.preventDefault();
+  dragOverIndex.value = index
+}
+
+function onDragLeave() {
+  dragOverIndex.value = null
+}
+
 function onDrop(e: DragEvent, index: number) {
-  e.preventDefault(); const from = dragIndex.value
-  if (from === null || from === index) { dragIndex.value = dragOverIndex.value = null; return }
-  const item = pages.value.splice(from, 1)[0]; pages.value.splice(index, 0, item)
+  e.preventDefault();
+  const from = dragIndex.value
+  if (from === null || from === index) {
+    dragIndex.value = dragOverIndex.value = null;
+    return
+  }
+  const item = pages.value.splice(from, 1)[0];
+  pages.value.splice(index, 0, item)
   const newMap: Record<number, Annotation[]> = {}
   for (const k of Object.keys(annotationsMap.value).map(Number)) {
-    let nk = k; if (k === from) nk = index; else if (from < k && k <= index) nk = k - 1; else if (from > k && k >= index) nk = k + 1
+    let nk = k;
+    if (k === from) nk = index; else if (from < k && k <= index) nk = k - 1; else if (from > k && k >= index) nk = k + 1
     newMap[nk] = annotationsMap.value[k]
   }
   annotationsMap.value = newMap
   if (currentPage.value === from) currentPage.value = index
   else if (from < currentPage.value && index >= currentPage.value) currentPage.value--
   else if (from > currentPage.value && index <= currentPage.value) currentPage.value++
-  dragIndex.value = dragOverIndex.value = null; markDirty(); nextTick(() => syncOverlay())
+  dragIndex.value = dragOverIndex.value = null;
+  markDirty();
+  nextTick(() => syncOverlay())
 }
-function onDragEnd() { dragIndex.value = dragOverIndex.value = null }
+
+function onDragEnd() {
+  dragIndex.value = dragOverIndex.value = null
+}
 
 // =============================================================================
 // 样式
@@ -451,13 +545,23 @@ function onDragEnd() { dragIndex.value = dragOverIndex.value = null }
 function applyStyleToSelected() {
   if (!selectedAnnotId.value) return
   const a = getCurrent().find(a => a.id === selectedAnnotId.value)
-  if (a) { a.strokeColor = stylePrefs.value.strokeColor; a.fillColor = stylePrefs.value.fillColor; a.strokeWidth = stylePrefs.value.strokeWidth; markDirty(); renderAnnotations() }
+  if (a) {
+    a.strokeColor = stylePrefs.value.strokeColor;
+    a.fillColor = stylePrefs.value.fillColor;
+    a.strokeWidth = stylePrefs.value.strokeWidth;
+    markDirty();
+    renderAnnotations()
+  }
 }
 
 watch(selectedAnnotId, (id) => {
   if (!id) return
   const a = getCurrent().find(a => a.id === id)
-  if (a) { stylePrefs.value.strokeColor = a.strokeColor; stylePrefs.value.fillColor = a.fillColor; stylePrefs.value.strokeWidth = a.strokeWidth }
+  if (a) {
+    stylePrefs.value.strokeColor = a.strokeColor;
+    stylePrefs.value.fillColor = a.fillColor;
+    stylePrefs.value.strokeWidth = a.strokeWidth
+  }
 })
 
 // =============================================================================
@@ -465,7 +569,10 @@ watch(selectedAnnotId, (id) => {
 // =============================================================================
 
 async function handleSave() {
-  if (!pdfBuffer.value) { message.error('无 PDF 数据'); return }
+  if (!pdfBuffer.value) {
+    message.error('无 PDF 数据');
+    return
+  }
 
   try {
     const pdfDoc = await PDFDocument.load(pdfBuffer.value!)
@@ -477,7 +584,9 @@ async function handleSave() {
     const outPdf = await PDFDocument.create()
     const allPages = await outPdf.copyPages(pdfDoc, pageIndices)
     for (let i = 0; i < allPages.length; i++) {
-      const p = allPages[i]; const origIdx = pageIndices[i]; const pd = pages.value.find(x => x.index === origIdx)
+      const p = allPages[i];
+      const origIdx = pageIndices[i];
+      const pd = pages.value.find(x => x.index === origIdx)
       if (pd?.rotation) p.setRotation({type: 'degrees', angle: pd.rotation} as any)
       for (const ann of (annotationsMap.value[i] || [])) await _embedAnnotation(outPdf, p, ann)
       outPdf.addPage(p)
@@ -499,7 +608,10 @@ async function handleSave() {
       // 回退：浏览器下载
       const blob = new Blob([pdfBytes], {type: 'application/pdf'})
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a'); a.href = url; a.download = suggestedName; a.click()
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = suggestedName;
+      a.click()
       URL.revokeObjectURL(url)
     }
     dirty.value = false
@@ -515,15 +627,36 @@ async function _embedAnnotation(pdfDoc: PDFDocument, page: any, ann: Annotation)
   const height = page.getSize().height
   // 自然图像像素 → PDF 点: 预览图以 scale=1.2 渲染，故 1px = 1/1.2 pt
   const s = 1 / 1.2
-  const x = ann.x * s; const y = height - (ann.y + ann.height) * s
-  const w = ann.width * s; const h = ann.height * s
-  const sC = _ph(ann.strokeColor || '#1890ff'); const fC = _ph(ann.fillColor || ann.strokeColor || '#1890ff')
+  const x = ann.x * s;
+  const y = height - (ann.y + ann.height) * s
+  const w = ann.width * s;
+  const h = ann.height * s
+  const sC = _ph(ann.strokeColor || '#1890ff');
+  const fC = _ph(ann.fillColor || ann.strokeColor || '#1890ff')
   switch (ann.type) {
     case 'rect':
-      page.drawRectangle({x, y, width: w, height: h, borderColor: rgb(sC[0], sC[1], sC[2]), borderWidth: Math.max(1, ann.strokeWidth || 2), color: rgb(fC[0], fC[1], fC[2]), opacity: fillOpacity.value})
+      page.drawRectangle({
+        x,
+        y,
+        width: w,
+        height: h,
+        borderColor: rgb(sC[0], sC[1], sC[2]),
+        borderWidth: Math.max(1, ann.strokeWidth || 2),
+        color: rgb(fC[0], fC[1], fC[2]),
+        opacity: fillOpacity.value
+      })
       break
     case 'ellipse':
-      page.drawEllipse({x: x + w / 2, y: y + h / 2, xScale: w / 2, yScale: h / 2, borderColor: rgb(sC[0], sC[1], sC[2]), borderWidth: Math.max(1, ann.strokeWidth || 2), color: rgb(fC[0], fC[1], fC[2]), opacity: fillOpacity.value})
+      page.drawEllipse({
+        x: x + w / 2,
+        y: y + h / 2,
+        xScale: w / 2,
+        yScale: h / 2,
+        borderColor: rgb(sC[0], sC[1], sC[2]),
+        borderWidth: Math.max(1, ann.strokeWidth || 2),
+        color: rgb(fC[0], fC[1], fC[2]),
+        opacity: fillOpacity.value
+      })
       break
     case 'text':
       // 用 canvas 渲染文字为图片嵌入，避免中文字符编码问题
@@ -546,12 +679,15 @@ async function _embedAnnotation(pdfDoc: PDFDocument, page: any, ann: Annotation)
         const imgH = c.height * s
         const topY = height - ann.y * s
         page.drawImage(img, {x, y: topY - imgH, width: imgW, height: imgH})
-      } catch { /* 文字渲染失败则忽略 */ }
+      } catch { /* 文字渲染失败则忽略 */
+      }
       break
   }
 }
+
 function _ph(hex: string): [number, number, number] {
-  const c = hex.replace('#', ''); return [parseInt(c.slice(0, 2), 16) / 255, parseInt(c.slice(2, 4), 16) / 255, parseInt(c.slice(4, 6), 16) / 255]
+  const c = hex.replace('#', '');
+  return [parseInt(c.slice(0, 2), 16) / 255, parseInt(c.slice(2, 4), 16) / 255, parseInt(c.slice(4, 6), 16) / 255]
 }
 
 // =============================================================================
@@ -560,9 +696,16 @@ function _ph(hex: string): [number, number, number] {
 
 function resetAll() {
   if (dirty.value && !window.confirm('当前有未保存的修改，确定重新上传？')) return
-  pdfFile.value = null; pdfFileList.value = []; pdfBuffer.value = null; pages.value = []
-  pageCount.value = 0; currentPage.value = 0; annotationsMap.value = {}
-  activeTool.value = 'select'; selectedAnnotId.value = null; dirty.value = false
+  pdfFile.value = null;
+  pdfFileList.value = [];
+  pdfBuffer.value = null;
+  pages.value = []
+  pageCount.value = 0;
+  currentPage.value = 0;
+  annotationsMap.value = {}
+  activeTool.value = 'select';
+  selectedAnnotId.value = null;
+  dirty.value = false
 }
 
 // 离开当前工具箱页面时提示未保存
@@ -580,15 +723,19 @@ onBeforeRouteLeave((_to, _from, next) => {
     <n-card title="PDF编辑" style="height: 100vh; padding-top: 1rem">
       <!-- 未上传 -->
       <div v-if="!pdfFile" class="upload-area">
-        <n-upload :custom-request="pdfCustomRequest" :file-list="pdfFileList" :max="1" accept=".pdf" dragger @change="handlePdfChange">
+        <n-upload :custom-request="pdfCustomRequest" :file-list="pdfFileList" :max="1" accept=".pdf" dragger
+                  @change="handlePdfChange">
           <n-upload-dragger>
-            <div style="margin-bottom: 12px"><n-icon :depth="3" size="48">
-              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/>
-                <line x1="9" x2="15" y1="15" y2="15"/>
-              </svg>
-            </n-icon></div>
+            <div style="margin-bottom: 12px">
+              <n-icon :depth="3" size="48">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" x2="12" y1="18" y2="12"/>
+                  <line x1="9" x2="15" y1="15" y2="15"/>
+                </svg>
+              </n-icon>
+            </div>
             <n-text style="font-size: 16px">点击或者拖动 PDF 文件到该区域来上传</n-text>
             <n-p depth="3" style="margin: 8px 0 0 0">仅支持单个 .pdf 格式文件</n-p>
           </n-upload-dragger>
@@ -606,16 +753,18 @@ onBeforeRouteLeave((_to, _from, next) => {
           </div>
           <div class="thumbnail-list" ref="thumbnailListRef">
             <div v-for="(page, index) in pages" :key="'p'+index"
-                 class="thumbnail-item" :class="{active: currentPage===index, 'drag-over': dragOverIndex===index, dragging: dragIndex===index}"
+                 class="thumbnail-item"
+                 :class="{active: currentPage===index, 'drag-over': dragOverIndex===index, dragging: dragIndex===index}"
                  :draggable="true" @click="selectPage(index)"
                  @dragstart="onDragStart($event, index)" @dragover="onDragOver($event, index)" @dragleave="onDragLeave"
                  @drop="onDrop($event, index)" @dragend="onDragEnd">
               <div class="drag-handle">⠿</div>
               <img :src="page.thumbnail" :alt="`第 ${index+1} 页`"/>
-              <div class="page-number">第 {{ index+1 }} 页</div>
+              <div class="page-number">第 {{ index + 1 }} 页</div>
               <div class="page-actions">
                 <n-button size="tiny" quaternary title="顺时针旋转 90°" @click.stop="rotatePage(index)">↻</n-button>
-                <n-button size="tiny" quaternary type="error" title="删除此页" @click.stop="deletePage(index)">✕</n-button>
+                <n-button size="tiny" quaternary type="error" title="删除此页" @click.stop="deletePage(index)">✕
+                </n-button>
               </div>
             </div>
           </div>
@@ -640,7 +789,7 @@ onBeforeRouteLeave((_to, _from, next) => {
             </div>
             <div class="toolbar-group" style="margin-left:auto">
               <n-button size="tiny" :disabled="currentPage===0" @click="selectPage(currentPage-1)">‹</n-button>
-              <span class="page-indicator">{{ currentPage+1 }}/{{ pageCount }}</span>
+              <span class="page-indicator">{{ currentPage + 1 }}/{{ pageCount }}</span>
               <n-button size="tiny" :disabled="currentPage>=pageCount-1" @click="selectPage(currentPage+1)">›</n-button>
             </div>
           </div>
@@ -648,18 +797,29 @@ onBeforeRouteLeave((_to, _from, next) => {
           <!-- 样式面板 -->
           <div v-if="showStylePanel" class="style-panel">
             <div class="style-row"><span class="style-label">描边</span>
-              <div class="color-dots"><button v-for="c in colorOptions" :key="c" class="color-btn" :style="{backgroundColor:c}" :class="{active: stylePrefs.strokeColor===c}" @click="stylePrefs.strokeColor=c; selectedAnnotId&&applyStyleToSelected()"/></div>
+              <div class="color-dots">
+                <button v-for="c in colorOptions" :key="c" class="color-btn" :style="{backgroundColor:c}"
+                        :class="{active: stylePrefs.strokeColor===c}"
+                        @click="stylePrefs.strokeColor=c; selectedAnnotId&&applyStyleToSelected()"/>
+              </div>
             </div>
             <div class="style-row"><span class="style-label">填充</span>
-              <div class="color-dots"><button v-for="c in colorOptions" :key="c" class="color-btn" :style="{backgroundColor:c}" :class="{active: stylePrefs.fillColor===c}" @click="stylePrefs.fillColor=c; selectedAnnotId&&applyStyleToSelected()"/></div>
+              <div class="color-dots">
+                <button v-for="c in colorOptions" :key="c" class="color-btn" :style="{backgroundColor:c}"
+                        :class="{active: stylePrefs.fillColor===c}"
+                        @click="stylePrefs.fillColor=c; selectedAnnotId&&applyStyleToSelected()"/>
+              </div>
             </div>
             <div class="style-row"><span class="style-label">透明度</span>
               <n-slider v-model:value="fillOpacity" :min="0" :max="0.6" :step="0.05" style="width:120px"/>
-              <span style="font-size:12px;margin-left:4px;color:#888">{{ Math.round(fillOpacity*100) }}%</span>
+              <span style="font-size:12px;margin-left:4px;color:#888">{{ Math.round(fillOpacity * 100) }}%</span>
             </div>
             <div class="style-row"><span class="style-label">线宽</span>
-              <n-input-number v-model:value="stylePrefs.strokeWidth" :min="0.5" :max="10" :step="0.5" size="tiny" style="width:70px"/>
-              <n-button size="tiny" quaternary style="margin-left:4px" @click="selectedAnnotId&&applyStyleToSelected()">应用</n-button>
+              <n-input-number v-model:value="stylePrefs.strokeWidth" :min="0.5" :max="10" :step="0.5" size="tiny"
+                              style="width:70px"/>
+              <n-button size="tiny" quaternary style="margin-left:4px" @click="selectedAnnotId&&applyStyleToSelected()">
+                应用
+              </n-button>
             </div>
           </div>
 
@@ -692,10 +852,7 @@ onBeforeRouteLeave((_to, _from, next) => {
           <!-- 底部 -->
           <div class="preview-footer">
             <n-button quaternary size="small" @click="resetAll">重新上传</n-button>
-            <n-badge v-if="dirty" :value="'●'" type="warning" :show-zero="false" :max="999">
-              <n-button type="primary" size="small" @click="handleSave">💾 保存</n-button>
-            </n-badge>
-            <n-button v-else type="primary" size="small" @click="handleSave">💾 保存</n-button>
+            <n-button type="primary" size="small" @click="handleSave">💾 保存</n-button>
           </div>
         </div>
       </div>
@@ -705,60 +862,286 @@ onBeforeRouteLeave((_to, _from, next) => {
 </template>
 
 <style scoped>
-.pdf-edit-container { margin:0; padding:0; height:100%; }
-.upload-area { display:flex; justify-content:center; align-items:center; height:60vh; }
-.edit-layout { display:flex; gap:12px; height:calc(100vh - 80px); overflow:hidden; }
+.pdf-edit-container {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.upload-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+}
+
+.edit-layout {
+  display: flex;
+  height: calc(100vh - 7rem);
+  gap: 12px;
+  overflow: hidden;
+  padding-bottom: 0;
+}
 
 /* 左栏 */
-.page-list-column { width:200px; min-width:200px; display:flex; flex-direction:column; border-right:1px solid #eee; padding-right:12px; }
-.column-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 4px; }
-.thumbnail-list { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding:4px 0; }
-.thumbnail-item { border:2px solid #e8e8e8; border-radius:6px; padding:6px; cursor:pointer; text-align:center; transition:all .15s; background:#fafafa; user-select:none; }
-.thumbnail-item:hover { border-color:#d9d9d9; background:#f5f5f5; }
-.thumbnail-item.active { border-color:#1890ff; background:#f0f7ff; }
-.thumbnail-item.drag-over { border-color:#52c41a; background:#f6ffed; }
-.thumbnail-item.dragging { opacity:.4; }
-.drag-handle { font-size:14px; color:#bbb; cursor:grab; user-select:none; line-height:1; margin-bottom:2px; }
-.thumbnail-item img { width:100%; height:auto; border-radius:3px; display:block; }
-.page-number { font-size:11px; color:#888; margin:2px 0; }
-.page-actions { display:flex; justify-content:center; gap:4px; margin:2px 0; }
+.page-list-column {
+  width: 200px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #eee;
+  padding-right: 12px;
+}
+
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.thumbnail-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.thumbnail-item {
+  border: 2px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  background: #fafafa;
+  user-select: none;
+}
+
+.thumbnail-item:hover {
+  border-color: #d9d9d9;
+  background: #f5f5f5;
+}
+
+.thumbnail-item.active {
+  border-color: #1890ff;
+  background: #f0f7ff;
+}
+
+.thumbnail-item.drag-over {
+  border-color: #52c41a;
+  background: #f6ffed;
+}
+
+.thumbnail-item.dragging {
+  opacity: .4;
+}
+
+.drag-handle {
+  font-size: 14px;
+  color: #bbb;
+  cursor: grab;
+  user-select: none;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.thumbnail-item img {
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  display: block;
+}
+
+.page-number {
+  font-size: 11px;
+  color: #888;
+  margin: 2px 0;
+}
+
+.page-actions {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 2px 0;
+}
 
 /* 右栏 */
-.preview-column { flex:1; display:flex; flex-direction:column; min-width:0; }
-.toolbar { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #eee; margin-bottom:8px; flex-wrap:wrap; }
-.toolbar-group { display:flex; align-items:center; gap:4px; }
-.tool-btn { display:flex; align-items:center; gap:3px; padding:4px 8px; border:1px solid #e8e8e8; border-radius:4px; background:#fff; cursor:pointer; font-size:13px; transition:all .15s; }
-.tool-btn:hover { border-color:#1890ff; color:#1890ff; }
-.tool-btn.active { border-color:#1890ff; background:#e6f7ff; color:#1890ff; }
-.tool-text-icon { font-weight:700; font-family:serif; }
-.tool-label { font-size:12px; }
-.hint-text { font-size:11px; color:#aaa; margin-left:4px; }
-.page-indicator { font-size:13px; padding:0 8px; color:#666; white-space:nowrap; }
+.preview-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all .15s;
+}
+
+.tool-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.tool-btn.active {
+  border-color: #1890ff;
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.tool-text-icon {
+  font-weight: 700;
+  font-family: serif;
+}
+
+.tool-label {
+  font-size: 12px;
+}
+
+.hint-text {
+  font-size: 11px;
+  color: #aaa;
+  margin-left: 4px;
+}
+
+.page-indicator {
+  font-size: 13px;
+  padding: 0 8px;
+  color: #666;
+  white-space: nowrap;
+}
 
 /* 样式面板 */
-.style-panel { padding:8px 12px; background:#fafafa; border:1px solid #eee; border-radius:4px; margin-bottom:8px; display:flex; flex-direction:column; gap:6px; }
-.style-row { display:flex; align-items:center; gap:8px; }
-.style-label { font-size:12px; color:#888; min-width:40px; }
-.color-dots { display:flex; gap:3px; flex-wrap:wrap; }
-.color-btn { width:18px; height:18px; border-radius:50%; border:2px solid transparent; cursor:pointer; padding:0; transition:border-color .15s; }
-.color-btn.active,.color-btn:hover { border-color:#333; }
+.style-panel {
+  padding: 8px 12px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.style-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.style-label {
+  font-size: 12px;
+  color: #888;
+  min-width: 40px;
+}
+
+.color-dots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.color-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color .15s;
+}
+
+.color-btn.active, .color-btn:hover {
+  border-color: #333;
+}
 
 /* 预览区 */
 .preview-area {
-  flex:1; display:flex; justify-content:center; align-items:center;
-  overflow:auto; background:#f5f5f5; border-radius:4px; padding:16px;
-  position:relative; min-height:200px;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 16px;
+  position: relative;
+  min-height: 200px;
 }
-.loading-overlay { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; }
+
+.loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
 
 .canvas-wrapper {
-  position:relative; display:inline-flex; align-items:center; justify-content:center;
-  box-shadow:0 2px 12px rgba(0,0,0,.12); max-width:100%; max-height:100%;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+  max-width: 100%;
+  max-height: 100%;
 }
-.pdf-preview-img { display:block; max-width:100%; max-height:75vh; object-fit:contain; }
-.overlay-canvas { position:absolute; top:0; left:0; cursor:default; pointer-events:auto; width:100%; height:100%; }
-.overlay-canvas.crosshair { cursor:crosshair; }
 
-.preview-footer { display:flex; justify-content:space-between; align-items:center; padding:8px 0; margin-top:8px; border-top:1px solid #eee; }
+.pdf-preview-img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
 
+.overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: default;
+  pointer-events: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.overlay-canvas.crosshair {
+  cursor: crosshair;
+}
+
+.preview-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  margin-top: 8px;
+  border-top: 1px solid #eee;
+}
 </style>
