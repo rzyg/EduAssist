@@ -12,25 +12,31 @@ interface OpenSourceProject {
 }
 
 const openSourceProjects: OpenSourceProject[] = [
+  // ── 前端 ────────────────────────────────────────────────────
   {
     name: 'Vue.js',
     license: 'MIT License',
-    copyright: 'Copyright (c) 2013-present, Yuxi Evan You'
+    copyright: 'Copyright (c) 2014-present, Evan You'
+  },
+  {
+    name: 'Vue Router',
+    license: 'MIT License',
+    copyright: 'Copyright (c) 2019-present, Eduardo San Martin Morote'
   },
   {
     name: 'Tauri',
-    license: 'MIT License',
-    copyright: 'Copyright (c) 2019-2024 Tauri Programme within The Commons Conservancy'
+    license: 'MIT License / Apache-2.0',
+    copyright: 'Copyright (c) 2019-present, Tauri Programme within The Commons Conservancy'
   },
   {
     name: 'Naive UI',
     license: 'MIT License',
-    copyright: 'Copyright (c) 2021-present, TuSimple'
+    copyright: 'Copyright (c) 2021, TuSimple'
   },
   {
     name: 'Vite',
     license: 'MIT License',
-    copyright: 'Copyright (c) 2019-present, Yuxi Evan You and Vite contributors'
+    copyright: 'Copyright (c) 2019-present, VoidZero Inc. and Vite contributors'
   },
   {
     name: 'TypeScript',
@@ -38,25 +44,89 @@ const openSourceProjects: OpenSourceProject[] = [
     copyright: 'Copyright (c) Microsoft Corporation'
   },
   {
-    name: 'FastAPI',
+    name: 'pdf-lib',
     license: 'MIT License',
-    copyright: 'Copyright (c) 2018 Sebastián Ramírez'
+    copyright: 'Copyright (c) 2019, Andrew Dillon'
   },
+  {
+    name: 'pdfjs-dist',
+    license: 'Apache License 2.0',
+    copyright: 'Copyright (c) 2024, Mozilla Foundation'
+  },
+  {
+    name: 'vicons',
+    license: 'MIT License',
+    copyright: 'Copyright (c) 2021-present, 07akioni'
+  },
+
+  // ── 后端 Python ─────────────────────────────────────────────
   {
     name: 'Python',
     license: 'PSF License',
-    copyright: 'Copyright (c) 2001-2024 Python Software Foundation'
+    copyright: 'Copyright (c) 2001-2024, Python Software Foundation'
+  },
+  {
+    name: 'FastAPI',
+    license: 'MIT License',
+    copyright: 'Copyright (c) 2018, Sebastián Ramírez'
+  },
+  {
+    name: 'uvicorn',
+    license: 'BSD-3-Clause',
+    copyright: 'Copyright (c) 2017-present, Encode OSS Ltd'
+  },
+  {
+    name: 'pikepdf',
+    license: 'MPL-2.0',
+    copyright: 'Copyright (c) 2024, pikepdf contributors'
+  },
+  {
+    name: 'pypdf',
+    license: 'BSD-3-Clause',
+    copyright: 'Copyright (c) 2006-2008, Mathieu Fenniak'
   },
   {
     name: 'openpyxl',
     license: 'MIT License',
-    copyright: 'Copyright (c) 2010 openpyxl'
+    copyright: 'Copyright (c) 2010-2024, openpyxl'
   },
   {
     name: 'loguru',
     license: 'MIT License',
-    copyright: 'Copyright (c) 2017 Delgan'
-  }
+    copyright: 'Copyright (c) 2017-2020, Delgan'
+  },
+  {
+    name: 'httpx',
+    license: 'BSD-3-Clause',
+    copyright: 'Copyright (c) 2019, Encode OSS Ltd'
+  },
+  {
+    name: 'pyyaml',
+    license: 'MIT License',
+    copyright: 'Copyright (c) 2006-2016, Kirill Simonov / 2017-2021, Ingy döt Net'
+  },
+  {
+    name: 'aiosqlite',
+    license: 'MIT License',
+    copyright: 'Copyright (c) 2022, Amethyst Reese'
+  },
+
+  // ── 后端 Rust ───────────────────────────────────────────────
+  {
+    name: 'serde / serde_json',
+    license: 'MIT / Apache-2.0',
+    copyright: 'Copyright (c) 2019, Serde Developers'
+  },
+  {
+    name: 'tracing',
+    license: 'MIT License',
+    copyright: 'Copyright (c) 2020, Tokio Contributors'
+  },
+  {
+    name: 'ureq',
+    license: 'MIT / Apache-2.0',
+    copyright: 'Copyright (c) 2019, Martin Algesten'
+  },
 ]
 
 function renderProject(project: OpenSourceProject) {

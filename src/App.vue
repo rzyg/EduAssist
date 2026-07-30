@@ -149,9 +149,17 @@ function retryInit() {
 }
 
 onMounted(doInit)
+
+// ── 全局禁止右键菜单 ────────────────────────────────────────────
+onMounted(() => document.addEventListener('contextmenu', e => e.preventDefault()))
 </script>
 
 <style>
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 .startup-fade-enter-active,
 .startup-fade-leave-active {
   transition: opacity 0.5s ease;
