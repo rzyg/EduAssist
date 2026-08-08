@@ -49,7 +49,15 @@ const router = createRouter({
         }, {
             path: '/allowance',
             name: 'allowance',
-            component: () => import('../pages/construction.vue')
+            redirect: '/allowance/calendar'
+        }, {
+            path: '/allowance/calendar',
+            name: 'allowance-calendar',
+            component: () => import('../pages/allowance/calendar.vue')
+        }, {
+            path: '/allowance/attendance',
+            name: 'allowance-attendance',
+            component: () => import('../pages/allowance/attendance.vue')
         }
     ]
 })

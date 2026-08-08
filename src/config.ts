@@ -128,6 +128,18 @@ export async function apiPost<T = unknown>(path: string, body?: unknown, options
     }))
 }
 
+/** PUT JSON 请求，返回 JSON */
+export async function apiPut<T = unknown>(path: string, body?: unknown, options: ApiFetchOptions = {}): Promise<T> {
+    const headers = new Headers(options.headers)
+    headers.set('Content-Type', 'application/json')
+    return parseJson<T>(await apiFetch(path, {
+        ...options,
+        method: 'PUT',
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+    }))
+}
+
 /** 上传 FormData（自动注入 token；默认不设超时，避免大文件被截断），返回 JSON */
 export async function apiUpload<T = unknown>(path: string, formData: FormData, options: ApiFetchOptions = {}): Promise<T> {
     return parseJson<T>(await apiFetch(path, {

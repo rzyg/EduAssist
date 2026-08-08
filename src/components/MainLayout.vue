@@ -82,7 +82,13 @@ const topMenuOptions: MenuOption[] = [
       {childrenLabel: '编辑', childrenKey: 'edit'},
     ],
   },
-  {childrenLabel: '津贴', childrenKey: 'allowance', icon: renderIcon(AllowanceIcon)},
+  {
+    childrenLabel: '津贴', childrenKey: 'allowance', icon: renderIcon(AllowanceIcon),
+    childrenChildren: [
+      {childrenLabel: '校历', childrenKey: 'allowance-calendar'},
+      {childrenLabel: '签到统计', childrenKey: 'allowance-attendance'},
+    ],
+  },
 ]
 
 const bottomMenuOptions: MenuOption[] = [
