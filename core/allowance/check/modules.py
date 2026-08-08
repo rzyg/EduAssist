@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time
 
 
 @dataclass
@@ -8,8 +8,8 @@ class Check:
     单次打卡记录，包含签到和签出
     """
 
-    time_in: datetime | None = None
-    time_out: datetime | None = None
+    time_in: time | None = None
+    time_out: time | None = None
 
 
 @dataclass
@@ -22,12 +22,12 @@ class Workday:
     morning: Check | None = None
     afternoon: Check | None = None
     evening: Check | None = None
-    before_holiday: bool = False
-    after_holiday: bool = False
+    leave_school: bool = False
+    return_school: bool = False
 
     def __post_init__(self):
-        if self.before_holiday and self.after_holiday:
-            raise ValueError("before_holiday 和 after_holiday 不能同时为 True")
+        if self.leave_school and self.return_school:
+            raise ValueError("leave_school 和 return_school 不能同时为 True")
 
 
 @dataclass
