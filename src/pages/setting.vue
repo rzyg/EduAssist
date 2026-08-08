@@ -2,7 +2,7 @@
 import {onMounted, ref} from 'vue'
 import {useMessage} from 'naive-ui'
 import {useRouter} from 'vue-router'
-import {apiFetch} from '../config'
+import {apiFetch, checkHealth, resetApiBase} from '../config'
 
 const message = useMessage()
 const router = useRouter()
@@ -101,6 +101,9 @@ async function confirmSaveAndRestart() {
   origData = pathData.value
   origLogs = pathLogs.value
 
+  // 后端地址可能已变更 → 使前端缓存失效，下次请求重新获取
+  resetApiBase()
+
   if (!needsRestart) {
     message.success('配置已保存')
     router.push({name: 'home'})
@@ -124,15 +127,11 @@ async function confirmSaveAndRestart() {
     const newUrl = `http://${serverHost.value}:${serverPort.value}`
     for (let i = 0; i < 30; i++) {
       await new Promise(r => setTimeout(r, 1000))
-      try {
-        const res = await fetch(`${newUrl}/health`, {signal: AbortSignal.timeout(1500)})
-        if (res.ok && (await res.json()).status === 'ok') {
-          restartStatus.value = '就绪！'
-          await new Promise(r => setTimeout(r, 500))
-          router.push({name: 'home'})
-          return
-        }
-      } catch { /* 等待中 */
+      if (await checkHealth(newUrl)) {
+        restartStatus.value = '就绪！'
+        await new Promise(r => setTimeout(r, 500))
+        router.push({name: 'home'})
+        return
       }
     }
     message.warning('后端重启超时，请手动刷新')

@@ -1,6 +1,7 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use serde::Deserialize;
 use tauri::Manager;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
@@ -83,17 +84,29 @@ fn get_token(state: tauri::State<BackendProcess>) -> String {
     state.token.clone()
 }
 
+// ── 从 config.yaml 读取后端配置（统一解析）────────────────────────────
+#[derive(Deserialize, Default)]
+struct ServerConfig {
+    host: Option<String>,
+    port: Option<u16>,
+}
+
+#[derive(Deserialize, Default)]
+struct AppConfig {
+    server: Option<ServerConfig>,
+    dev_mode: Option<bool>,
+}
+
+fn read_config(base_dir: &Path) -> Option<AppConfig> {
+    let content = std::fs::read_to_string(base_dir.join("config.yaml")).ok()?;
+    serde_yaml::from_str(&content).ok()
+}
+
 #[tauri::command]
 fn get_dev_mode(state: tauri::State<BackendProcess>) -> bool {
-    let config_path = state.base_dir.join("config.yaml");
-    if let Ok(content) = std::fs::read_to_string(&config_path) {
-        content.lines().any(|l| {
-            let t = l.trim();
-            t.starts_with("dev_mode:") && t.trim_start_matches("dev_mode:").trim() == "true"
-        })
-    } else {
-        false
-    }
+    read_config(&state.base_dir)
+        .and_then(|cfg| cfg.dev_mode)
+        .unwrap_or(false)
 }
 
 #[tauri::command]
@@ -110,17 +123,9 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
     let base_dir = &state.base_dir;
 
     // 判断开发者模式 → 不传递 auth token
-    let is_dev_mode = {
-        let config_path = base_dir.join("config.yaml");
-        if let Ok(content) = std::fs::read_to_string(&config_path) {
-            content.lines().any(|l| {
-                let t = l.trim();
-                t.starts_with("dev_mode:") && t.trim_start_matches("dev_mode:").trim() == "true"
-            })
-        } else {
-            false
-        }
-    };
+    let is_dev_mode = read_config(base_dir)
+        .and_then(|cfg| cfg.dev_mode)
+        .unwrap_or(false);
     let token = if is_dev_mode { "" } else { &state.token };
 
     let mut guard = state.child.lock().map_err(|e| e.to_string())?;
@@ -292,37 +297,26 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 // ── 从 config.yaml 读取后端地址 ──────────────────────────────────────────
 #[tauri::command]
 fn get_backend_url(state: tauri::State<BackendProcess>) -> Result<String, String> {
-    let base_dir = &state.base_dir;
-    let config_path = base_dir.join("config.yaml");
-
-    if !config_path.exists() {
+    // 开发者调试模式（tauri dev）：固定使用默认地址
+    if tauri::is_dev() {
         return Ok("http://127.0.0.1:8000".to_string());
     }
 
-    let content = std::fs::read_to_string(&config_path).map_err(|e| e.to_string())?;
-    let mut host = "127.0.0.1";
-    let mut port = "8000";
-    let mut in_server = false;
-
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed == "server:" {
-            in_server = true;
-            continue;
-        }
-        if in_server {
-            if trimmed.starts_with("host:") {
-                host = trimmed.trim_start_matches("host:").trim().trim_matches('"');
-                // 如果是 localhost，转成 127.0.0.1
-                if host == "localhost" { host = "127.0.0.1"; }
-            } else if trimmed.starts_with("port:") {
-                port = trimmed.trim_start_matches("port:").trim().trim_matches('"');
-            } else if trimmed.contains(':') && !trimmed.starts_with('#') {
-                // 遇到下一个顶层 key，退出 server 段
-                in_server = false;
-            }
-        }
-    }
+    // 生产模式：从安装目录 config.yaml 读取 server.host/port，缺失时回退默认
+    let cfg = read_config(&state.base_dir);
+    let host = cfg
+        .as_ref()
+        .and_then(|c| c.server.as_ref())
+        .and_then(|s| s.host.clone())
+        .filter(|h| !h.is_empty())
+        .unwrap_or_else(|| "127.0.0.1".to_string());
+    // localhost 统一转成 127.0.0.1
+    let host = if host == "localhost" { "127.0.0.1".to_string() } else { host };
+    let port = cfg
+        .as_ref()
+        .and_then(|c| c.server.as_ref())
+        .and_then(|s| s.port)
+        .unwrap_or(8000);
 
     Ok(format!("http://{}:{}", host, port))
 }

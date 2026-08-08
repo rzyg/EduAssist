@@ -4,7 +4,7 @@ import {createDiscreteApi, NIcon, NMessageProvider} from 'naive-ui'
 import type {Component} from 'vue'
 import {h, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
-import {getApiBase} from '../config'
+import {checkHealth} from '../config'
 import DragArea from './DragArea.vue'
 import logoSrc from '../assets/logo.png'
 // ── 图标渲染 ──
@@ -91,23 +91,13 @@ const bottomMenuOptions: MenuOption[] = [
 ]
 
 // ── 运行时健康检测 ──
-let backendUrl = 'http://127.0.0.1:8000'
 let healthCheckTimer: ReturnType<typeof setInterval> | null = null
 let healthMsg: any = null
 let healthFailCount = 0
 const MAX_FAILS_BEFORE_RESTART = 3
 
-async function checkAlive(): Promise<boolean> {
-  try {
-    const res = await fetch(`${backendUrl}/health`, {signal: AbortSignal.timeout(1500)})
-    return res.ok && (await res.json()).status === 'ok'
-  } catch {
-    return false
-  }
-}
-
-async function checkHealth() {
-  if (await checkAlive()) {
+async function runHealthCheck() {
+  if (await checkHealth()) {
     // 之前失联过，现在恢复了 → 给个成功提示
     if (healthMsg) {
       message.success('后端服务已恢复')
@@ -138,8 +128,7 @@ async function checkHealth() {
 }
 
 onMounted(async () => {
-  backendUrl = await getApiBase()
-  healthCheckTimer = setInterval(checkHealth, 5000)
+  healthCheckTimer = setInterval(runHealthCheck, 5000)
 })
 
 onUnmounted(() => {

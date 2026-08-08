@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import {computed, ref} from 'vue'
 import {type UploadFileInfo, useMessage} from 'naive-ui'
-import {getToken} from '../config'
+import {apiUpload} from '../config'
 
 const props = withDefaults(defineProps<{
   cardTitle: string
@@ -179,23 +179,8 @@ async function handleSubmit() {
       formData.append('lineSheet', lineSheetFile.value!)
     }
 
-    const token = await getToken()
-    const headers = new Headers()
-    if (token) headers.set('Authorization', `Bearer ${token}`)
-
-    const response = await fetch(props.apiEndpoint, {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || '请求失败')
-    }
-
-    const result = await response.json()
-    outputPath.value = result.output_path
+    const result = await apiUpload<{output_path?: string}>(props.apiEndpoint, formData)
+    outputPath.value = result.output_path ?? ''
 
     message.success(props.successMessage)
 

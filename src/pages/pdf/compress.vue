@@ -1,21 +1,12 @@
 <script lang="ts" setup>
-import {ref, computed, onMounted} from 'vue'
+import {ref, computed} from 'vue'
 import {type UploadFileInfo, useMessage} from 'naive-ui'
-import {api, getToken} from '../../config'
+import {apiUpload} from '../../config'
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   cardTitle?: string
-  apiEndpoint?: string
 }>(), {
-  cardTitle: 'PDF 压缩',
-  apiEndpoint: ''
-})
-
-const actualApiEndpoint = ref(props.apiEndpoint)
-onMounted(async () => {
-  if (!props.apiEndpoint) {
-    actualApiEndpoint.value = await api('/api/v1/pdf/compress')
-  }
+  cardTitle: 'PDF 压缩'
 })
 
 const message = useMessage()
@@ -182,22 +173,7 @@ async function handleSubmit() {
       formData.append('advanced_options', advancedJson)
     }
 
-    const token = await getToken()
-    const headers = new Headers()
-    if (token) headers.set('Authorization', `Bearer ${token}`)
-
-    const response = await fetch(actualApiEndpoint.value, {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || '请求失败')
-    }
-
-    const result = await response.json()
+    const result = await apiUpload<{output_path?: string}>('/api/v1/pdf/compress', formData)
     outputPath.value = result.output_path || '压缩成功'
     message.success('压缩成功！')
 

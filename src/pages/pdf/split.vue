@@ -205,27 +205,19 @@
 </template>
 
 <script lang="ts" setup>
-import {ref, nextTick, watch, onMounted} from 'vue'
+import {ref, nextTick, watch} from 'vue'
 import {type UploadFileInfo, useMessage} from 'naive-ui'
 import {Add, Close, ArrowBack, ArrowForward} from '@vicons/ionicons5'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import {api, getToken} from '../../config'
+import {apiUpload} from '../../config'
 
 // 配置 PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   cardTitle?: string
-  apiEndpoint?: string
 }>(), {
-  cardTitle: 'PDF 拆分',
-  apiEndpoint: ''
-})
-const actualApiEndpoint = ref(props.apiEndpoint)
-onMounted(async () => {
-  if (!props.apiEndpoint) {
-    actualApiEndpoint.value = await api('/api/v1/pdf/split')
-  }
+  cardTitle: 'PDF 拆分'
 })
 const message = useMessage()
 
@@ -391,24 +383,9 @@ async function handleSplit() {
     }))
     formData.append('split_ranges_str', JSON.stringify(rangesData))
 
-    const token = await getToken()
-    const headers = new Headers()
-    if (token) headers.set('Authorization', `Bearer ${token}`)
-
-    const response = await fetch(actualApiEndpoint.value, {
-      method: 'POST',
-      headers,
-      body: formData
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || '拆分失败')
-    }
-
-    const result = await response.json()
+    const result = await apiUpload<{output_path?: string; file_count?: number}>('/api/v1/pdf/split', formData)
     message.success(`拆分成功！共生成 ${result.file_count || splitRanges.value.length} 个文件`)
-    outputFolder.value = result.output_path
+    outputFolder.value = result.output_path ?? ''
     showSplitModal.value = true
   } catch (error: any) {
     message.error(`拆分失败：${error.message}`)

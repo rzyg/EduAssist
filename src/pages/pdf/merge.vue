@@ -1,24 +1,15 @@
 <script lang="ts" setup>
-import {ref, onMounted} from 'vue'
+import {ref} from 'vue'
 import {type UploadFileInfo, useMessage} from 'naive-ui'
-import {api, getToken} from '../../config'
+import {apiUpload} from '../../config'
 
 const props = withDefaults(defineProps<{
   cardTitle: string
-  apiEndpoint?: string
   successMessage?: string
   buttonLabel?: string
 }>(), {
-  apiEndpoint: '',
   successMessage: '合并成功！',
   buttonLabel: '合并'
-})
-
-const actualApiEndpoint = ref(props.apiEndpoint)
-onMounted(async () => {
-  if (!props.apiEndpoint) {
-    actualApiEndpoint.value = await api('/api/v1/pdf/merge')
-  }
 })
 
 const message = useMessage()
@@ -78,22 +69,7 @@ async function handleSubmit() {
       formData.append('pdf_list', file)
     })
 
-    const token = await getToken()
-    const headers = new Headers()
-    if (token) headers.set('Authorization', `Bearer ${token}`)
-
-    const response = await fetch(actualApiEndpoint.value, {
-      method: 'POST',
-      headers,
-      body: formData,
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.detail || '请求失败')
-    }
-
-    const result = await response.json()
+    const result = await apiUpload<{output_path?: string; message?: string}>('/api/v1/pdf/merge', formData)
     outputPath.value = result.output_path || result.message || '合并成功'
 
     message.success(props.successMessage)

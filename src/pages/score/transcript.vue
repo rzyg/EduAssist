@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import {ref, onMounted} from 'vue'
 import ScoreForm from '../../components/ScoreForm.vue'
-import {api} from '../../config'
 
 const endpoint = ref('')
 
 onMounted(async () => {
-  endpoint.value = await api('/api/v1/score/transcript')
+  endpoint.value = '/api/v1/score/transcript'
 })
 </script>
 
