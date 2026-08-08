@@ -1,12 +1,12 @@
 # core/db/crud.py
 import sqlite3
-from typing import List, Dict, Any, Optional, Set, Iterable
 from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 # ========== 安全校验 ==========
 
 # 允许操作的表名白名单（防止 SQL 注入）
-ALLOWED_TABLES: Set[str] = {"user"}
+ALLOWED_TABLES: Set[str] = {"user", "holiday"}
 
 
 def _validate_table(table: str) -> None:
