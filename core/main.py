@@ -73,6 +73,10 @@ if __name__ == "__main__":
     import uvicorn
 
     from core.config import config as app_config
+    from core.parent_watchdog import start_parent_watchdog
+
+    # 父进程（Tauri 壳）消失时自动退出，避免被强杀后后端残留占用文件
+    start_parent_watchdog()
 
     cfg = uvicorn.Config(
         app,

@@ -170,7 +170,8 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
                 .args(["run", "--no-capture-output", "-n", "eduassist", "python", "-m", "core.main"])
                 .current_dir(base_dir)
                 .env("EDUASSIST_BASE", base_dir.as_os_str())
-                .env("EDUASSIST_TOKEN", token),
+                .env("EDUASSIST_TOKEN", token)
+                .env("EDUASSIST_PARENT_PID", std::process::id().to_string()),
         )
         .spawn();
 
@@ -181,7 +182,8 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
                     .args(["-m", "core.main"])
                     .current_dir(base_dir)
                     .env("EDUASSIST_BASE", base_dir.as_os_str())
-                    .env("EDUASSIST_TOKEN", token),
+                    .env("EDUASSIST_TOKEN", token)
+                    .env("EDUASSIST_PARENT_PID", std::process::id().to_string()),
             )
             .spawn()
         }).map_err(|e| {
@@ -201,7 +203,8 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
             Command::new(exe_path)
                 .current_dir(base_dir)
                 .env("EDUASSIST_BASE", base_dir.as_os_str())
-                .env("EDUASSIST_TOKEN", token),
+                .env("EDUASSIST_TOKEN", token)
+                .env("EDUASSIST_PARENT_PID", std::process::id().to_string()),
         )
         .spawn()
         .map_err(|e| {
