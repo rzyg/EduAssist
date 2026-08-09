@@ -66,15 +66,20 @@ fn kill_process_tree(child: &mut Child) {
     #[cfg(windows)]
     {
         let pid = child.id();
-        let _ = Command::new("taskkill")
+        if let Err(e) = Command::new("taskkill")
             .args(["/F", "/T", "/PID", &pid.to_string()])
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
-            .and_then(|mut c| c.wait());
+            .and_then(|mut c| c.wait())
+        {
+            tracing::warn!("taskkill 失败 (pid={}): {}", pid, e);
+        }
     }
     #[cfg(not(windows))]
     {
-        let _ = child.kill();
+        if let Err(e) = child.kill() {
+            tracing::warn!("杀死后端进程失败 (pid={}): {}", child.id(), e);
+        }
         let _ = child.wait();
     }
 }
@@ -98,8 +103,25 @@ struct AppConfig {
 }
 
 fn read_config(base_dir: &Path) -> Option<AppConfig> {
-    let content = std::fs::read_to_string(base_dir.join("config.yaml")).ok()?;
-    serde_yaml::from_str(&content).ok()
+    let path = base_dir.join("config.yaml");
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(e) => {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                tracing::warn!("读取 config.yaml 失败: {:?} ({})", path, e);
+            } else {
+                tracing::debug!("config.yaml 不存在，使用默认配置: {:?}", path);
+            }
+            return None;
+        }
+    };
+    match serde_yaml::from_str(&content) {
+        Ok(cfg) => Some(cfg),
+        Err(e) => {
+            tracing::warn!("解析 config.yaml 失败: {:?} ({})", path, e);
+            None
+        }
+    }
 }
 
 #[tauri::command]
@@ -128,14 +150,20 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
         .unwrap_or(false);
     let token = if is_dev_mode { "" } else { &state.token };
 
-    let mut guard = state.child.lock().map_err(|e| e.to_string())?;
+    let mut guard = state
+        .child
+        .lock()
+        .map_err(|e| {
+            tracing::error!("后端进程状态锁获取失败: {}", e);
+            e.to_string()
+        })?;
     if let Some(ref mut child) = *guard {
         kill_process_tree(child);
         let _ = child.wait();
     }
 
     let child = if tauri::is_dev() {
-        tracing::info!("开发环境，项目根目录: {:?}", base_dir);
+        tracing::debug!("开发环境，项目根目录: {:?}", base_dir);
 
         let conda_result = with_dev_console(
             Command::new("conda")
@@ -147,7 +175,7 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
         .spawn();
 
         conda_result.or_else(|_| {
-            println!("⚠️ conda 启动失败，尝试直接使用 python");
+            tracing::warn!("conda 启动失败，尝试直接使用 python");
             with_no_window(
                 Command::new(base_dir.join(".venv/Scripts/python.exe"))
                     .args(["-m", "core.main"])
@@ -156,12 +184,16 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
                     .env("EDUASSIST_TOKEN", token),
             )
             .spawn()
-        }).map_err(|e| format!("启动后端失败 (dev): {}", e))?
+        }).map_err(|e| {
+            tracing::error!("启动后端失败 (dev): {}", e);
+            format!("启动后端失败 (dev): {}", e)
+        })?
     } else {
-        println!("📍 生产环境，安装目录: {:?}", base_dir);
+        tracing::info!("生产环境，安装目录: {:?}", base_dir);
 
         let exe_path = base_dir.join("core/main.exe");
         if !exe_path.exists() {
+            tracing::error!("后端程序不存在: {:?}", exe_path);
             return Err(format!("后端程序不存在: {:?}", exe_path));
         }
 
@@ -172,21 +204,32 @@ fn start_backend(state: tauri::State<BackendProcess>) -> Result<String, String> 
                 .env("EDUASSIST_TOKEN", token),
         )
         .spawn()
-        .map_err(|e| format!("启动后端失败: {}", e))?
+        .map_err(|e| {
+            tracing::error!("启动后端失败: {}", e);
+            format!("启动后端失败: {}", e)
+        })?
     };
 
     *guard = Some(child);
+    tracing::debug!("后端已启动");
     Ok("后端已启动".to_string())
 }
 
 #[tauri::command]
 fn kill_backend(state: tauri::State<BackendProcess>) -> Result<String, String> {
-    let mut guard = state.child.lock().map_err(|e| e.to_string())?;
+    let mut guard = state
+        .child
+        .lock()
+        .map_err(|e| {
+            tracing::error!("后端进程状态锁获取失败: {}", e);
+            e.to_string()
+        })?;
     if let Some(ref mut child) = *guard {
         kill_process_tree(child);
         let _ = child.wait();
         *guard = None;
     }
+    tracing::debug!("后端已停止");
     Ok("后端已停止".to_string())
 }
 
@@ -213,21 +256,39 @@ async fn download_and_install(
 
     let resp = ureq::get(&url)
         .call()
-        .map_err(|e| format!("下载失败: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("下载更新包失败: {} ({})", url, e);
+            format!("下载失败: {}", e)
+        })?;
 
     let body = resp
         .into_body()
         .read_to_vec()
-        .map_err(|e| format!("读取响应失败: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("读取更新响应失败: {}", e);
+            format!("读取响应失败: {}", e)
+        })?;
 
-    std::fs::write(&tmp_dir, &body).map_err(|e| format!("写入文件失败: {}", e))?;
+    std::fs::write(&tmp_dir, &body).map_err(|e| {
+        tracing::error!("写入更新包失败: {:?} ({})", tmp_dir, e);
+        format!("写入文件失败: {}", e)
+    })?;
 
     let _ = Command::new(&tmp_dir)
         .arg("/S")
         .spawn()
-        .map_err(|e| format!("启动安装包失败: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("启动安装包失败: {:?} ({})", tmp_dir, e);
+            format!("启动安装包失败: {}", e)
+        })?;
 
-    let mut guard = state.child.lock().map_err(|e| e.to_string())?;
+    let mut guard = state
+        .child
+        .lock()
+        .map_err(|e| {
+            tracing::error!("后端进程状态锁获取失败: {}", e);
+            e.to_string()
+        })?;
     if let Some(ref mut child) = *guard {
         kill_process_tree(child);
         let _ = child.wait();
@@ -354,7 +415,14 @@ fn get_log_dir() -> PathBuf {
 }
 
 fn cleanup_old_logs(log_dir: &PathBuf) {
-    let Ok(entries) = std::fs::read_dir(log_dir) else { return };
+    let entries = match std::fs::read_dir(log_dir) {
+        Ok(e) => e,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return,
+        Err(e) => {
+            tracing::warn!("读取日志目录失败: {:?} ({})", log_dir, e);
+            return;
+        }
+    };
     let cutoff = std::time::SystemTime::now()
         - std::time::Duration::from_secs(7 * 24 * 3600);
 
@@ -372,7 +440,9 @@ fn cleanup_old_logs(log_dir: &PathBuf) {
 
 fn setup_logging() -> tracing_appender::non_blocking::WorkerGuard {
     let log_dir = get_log_dir();
-    std::fs::create_dir_all(&log_dir).ok();
+    if let Err(e) = std::fs::create_dir_all(&log_dir) {
+        tracing::warn!("创建日志目录失败: {:?} ({})", log_dir, e);
+    }
 
     cleanup_old_logs(&log_dir);
 
@@ -386,6 +456,10 @@ fn setup_logging() -> tracing_appender::non_blocking::WorkerGuard {
 
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "eduassist_lib=info".into());
+
+    // 控制台默认 debug（开发调试可见完整流程），文件默认 info（只落 warn/error 与关键 info）
+    let console_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "eduassist_lib=debug".into());
 
     tracing_subscriber::registry()
         .with(
@@ -402,7 +476,7 @@ fn setup_logging() -> tracing_appender::non_blocking::WorkerGuard {
                 .with_target(true)
                 .with_line_number(true)
                 .with_ansi(true)
-                .with_filter(filter),
+                .with_filter(console_filter),
         )
         .init();
 
@@ -438,14 +512,14 @@ pub fn run() {
 
             // 设置托盘
             if let Err(e) = setup_tray(app) {
-                eprintln!("托盘初始化失败: {}", e);
+                tracing::error!("托盘初始化失败: {}", e);
             };
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    // 注册退出事件 → 杀死后端 + 清理日志
+    // 注册退出事件 → 杀死后端（保留日志文件供排查，由启动时 cleanup_old_logs 过期清理）
     app.run(|app_handle, event| {
         if let tauri::RunEvent::Exit = event {
             tracing::info!("应用退出，清理后端进程");
@@ -457,9 +531,6 @@ pub fn run() {
                     }
                 }
             }
-            // 清理日志目录
-            let log_dir = get_log_dir();
-            let _ = std::fs::remove_dir_all(&log_dir);
         }
     });
 }
