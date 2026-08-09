@@ -251,6 +251,9 @@ async fn download_and_install(
     state: tauri::State<'_, BackendProcess>,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
+    // ureq read_to_vec 默认上限 10MB，安装包通常几十 MB，这里放宽到 512MB
+    const MAX_UPDATE_SIZE: u64 = 512 * 1024 * 1024;
+
     let tmp_dir = std::env::temp_dir().join("eduassist_update.exe");
     tracing::info!("下载更新包: {} → {:?}", url, tmp_dir);
 
@@ -263,6 +266,8 @@ async fn download_and_install(
 
     let body = resp
         .into_body()
+        .with_config()
+        .limit(MAX_UPDATE_SIZE)
         .read_to_vec()
         .map_err(|e| {
             tracing::error!("读取更新响应失败: {}", e);
