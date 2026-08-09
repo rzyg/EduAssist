@@ -351,7 +351,7 @@ class TestUpdateHolidayRoute:
         app.include_router(router)
         with mock.patch("core.route.allowance.update_holiday_record",
                         side_effect=RuntimeError("boom")):
-            client = TestClient(app)
+            client = TestClient(app, raise_server_exceptions=False)
             resp = client.put("/api/v1/allowance/update_holiday",
                               json={"year": 2026, "month_day": "03-05"})
         assert resp.status_code == 500

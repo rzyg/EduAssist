@@ -226,7 +226,7 @@ def _recompress_xobject_image(
                 obj.Width = new_w
                 obj.Height = new_h
     except Exception as exc:
-        logger.debug(f"跳过图像重压缩: {exc}")
+        logger.warning(f"跳过图像重压缩: {exc}")
 
 
 def _process_page_images(

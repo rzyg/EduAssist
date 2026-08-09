@@ -2,7 +2,7 @@ import os
 import tempfile
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Query, UploadFile
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,7 @@ from core.allowance.check.load_data import load_teachers
 from core.allowance.check.output import output_statistics
 from core.allowance.check.statistics import build_holiday_map, compute_attendance
 from core.allowance.utils.holiday import get_holiday_data, update_holiday_record
+from core.errors import AppError
 from core.score.map import loadData
 
 router = APIRouter(
@@ -38,11 +39,7 @@ async def get_calendar(year: int = Query(..., description="年份")):
 
     返回结构: {"holiday": {"01-01": {数据库字段..., "date": "2026-01-01"}, ...}}
     """
-    try:
-        results = get_holiday_data(year)
-    except Exception as e:
-        logger.error(f"获取节假日数据失败: {e}")
-        raise HTTPException(status_code=500, detail="获取节假日数据失败")
+    results = get_holiday_data(year)
 
     holiday = {}
     for record in results:
@@ -70,10 +67,7 @@ async def update_holiday(payload: UpdateHolidayRequest):
             remark=payload.remark,
         )
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        logger.error(f"修改节假日数据失败: {e}")
-        raise HTTPException(status_code=500, detail="修改节假日数据失败")
+        raise AppError(status_code=422, detail=str(e))
 
     item = dict(record)
     item["date"] = f"{item['year']:04d}-{item['month_day']}"
@@ -115,11 +109,6 @@ async def attendance_statistics(
         paths = output_statistics(teachers, date_range)
         return {"output_path": [str(path) for path in paths]}
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"坐班签到统计失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"坐班签到统计失败: {e}")
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
@@ -128,7 +117,7 @@ async def attendance_statistics(
 def save_upload_file(sheet: UploadFile) -> str:
     """从上传的文件创建临时文件，返回临时文件路径。"""
     if not sheet.filename:
-        raise HTTPException(status_code=400, detail="文件名不能为空")
+        raise AppError(status_code=400, detail="文件名不能为空")
 
     suffix = os.path.splitext(sheet.filename)[1]
     if not suffix:

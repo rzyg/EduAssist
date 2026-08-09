@@ -55,25 +55,29 @@ SAMPLE_ROWS = [
 
 
 def build_sheet(rows=SAMPLE_ROWS):
-    """构造签到表 Worksheet（内存）"""
+    """构造签到表 Worksheet（内存）
+
+    行号与 load_teachers 实际解析逻辑一致：
+    第 1 行留空（标题行，解析器忽略）；第 2 行为日期列头；第 3 行起为教师数据（每人 6 行）。
+    """
     wb = Workbook()
     ws = wb.active
     for col, header in enumerate(HEADERS, start=1):
-        ws.cell(row=1, column=col, value=header)
-    for row_index, row in enumerate(rows, start=2):
+        ws.cell(row=2, column=col, value=header)
+    for row_index, row in enumerate(rows, start=3):
         for col, value in enumerate(row, start=1):
             ws.cell(row=row_index, column=col, value=value)
     return ws
 
 
 def build_xlsx_bytes(rows=SAMPLE_ROWS) -> bytes:
-    """构造签到表 xlsx 文件字节"""
+    """构造签到表 xlsx 文件字节（行号结构同 build_sheet）"""
     buf = io.BytesIO()
     wb = Workbook()
     ws = wb.active
     for col, header in enumerate(HEADERS, start=1):
-        ws.cell(row=1, column=col, value=header)
-    for row_index, row in enumerate(rows, start=2):
+        ws.cell(row=2, column=col, value=header)
+    for row_index, row in enumerate(rows, start=3):
         for col, value in enumerate(row, start=1):
             ws.cell(row=row_index, column=col, value=value)
     wb.save(buf)

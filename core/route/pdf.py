@@ -3,8 +3,10 @@ import os
 import tempfile
 from typing import List
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, UploadFile
 from loguru import logger
+
+from core.errors import AppError
 
 # 创建路由器实例
 router = APIRouter(
@@ -39,12 +41,6 @@ def merge(
 
         output_path = merge(tmp_path_list, file_name)
         return {"output_path": str(output_path)}
-    except HTTPException:
-        # 直接抛出的 HTTP 异常
-        raise
-    except Exception as e:
-        logger.error(f"处理失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
         for tmp_path in tmp_path_list:
@@ -67,21 +63,21 @@ def split(
     # 获取文件名
     original_filename = pdf_file.filename
     if not original_filename:
-        raise HTTPException(status_code=400, detail="文件名不能为空")
+        raise AppError(status_code=400, detail="文件名不能为空")
 
     # 解析 JSON 字符串
     try:
         split_ranges = json.loads(split_ranges_str)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="split_ranges 不是有效的 JSON 格式")
+        raise AppError(status_code=400, detail="split_ranges 不是有效的 JSON 格式")
     # 校验数据结构
     if not isinstance(split_ranges, list):
-        raise HTTPException(status_code=400, detail="split_ranges 必须是数组")
+        raise AppError(status_code=400, detail="split_ranges 必须是数组")
     for idx, item in enumerate(split_ranges):
         if not isinstance(item, dict):
-            raise HTTPException(status_code=400, detail=f"第 {idx + 1} 项不是字典")
+            raise AppError(status_code=400, detail=f"第 {idx + 1} 项不是字典")
         if "start" not in item or "end" not in item:
-            raise HTTPException(
+            raise AppError(
                 status_code=400, detail=f"第 {idx + 1} 项缺少 'start' 或 'end' 键"
             )
     tmp_path = None
@@ -94,12 +90,6 @@ def split(
 
         output_path = split(original_filename, tmp_path, split_ranges)
         return {"output_path": str(output_path)}
-    except HTTPException:
-        # 直接抛出的 HTTP 异常
-        raise
-    except Exception as e:
-        logger.error(f"处理失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
         if tmp_path and os.path.exists(tmp_path):
@@ -125,7 +115,7 @@ def compress(
     # 获取文件名
     original_filename = pdf_file.filename
     if not original_filename:
-        raise HTTPException(status_code=400, detail="文件名不能为空")
+        raise AppError(status_code=400, detail="文件名不能为空")
 
     tmp_path = None
     try:
@@ -147,23 +137,18 @@ def compress(
             try:
                 overrides = json.loads(advanced_options)
                 if not isinstance(overrides, dict):
-                    raise HTTPException(
+                    raise AppError(
                         status_code=400,
                         detail="advanced_options 必须是 JSON 对象",
                     )
                 opts = merge_options(opts, overrides)
             except json.JSONDecodeError:
-                raise HTTPException(
+                raise AppError(
                     status_code=400, detail="advanced_options 不是有效的 JSON 格式"
                 )
 
         output_path = compress_with_options(tmp_path, file_name, opts)
         return {"output_path": str(output_path)}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"处理失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
         if tmp_path and os.path.exists(tmp_path):
@@ -178,7 +163,7 @@ def save_upload_file(scoreSheet: UploadFile) -> str:
     """
     # 检查文件名是否存在
     if not scoreSheet.filename:
-        raise HTTPException(status_code=400, detail="文件名不能为空")
+        raise AppError(status_code=400, detail="文件名不能为空")
 
     suffix = os.path.splitext(scoreSheet.filename)[1]
     # 如果没有扩展名，默认使用 .xlsx

@@ -2,6 +2,20 @@ from loguru import logger
 import sys
 
 
+def _console_format(record: dict) -> str:
+    base = (
+        "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
+    )
+    return base + "\n{exception}" if record["exception"] else base
+
+
+def _file_format(record: dict) -> str:
+    base = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function} - {message}"
+    return base + "\n{exception}" if record["exception"] else base
+
+
 def setup_logging():
     """配置全局日志"""
     # 移除默认的控制台输出（可选，默认是有的）
@@ -10,7 +24,7 @@ def setup_logging():
     # 控制台输出（带颜色，用于开发调试）
     logger.add(
         sys.stdout,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>",
+        format=_console_format,
         level="DEBUG",
         colorize=True,
     )
@@ -23,7 +37,7 @@ def setup_logging():
 
     logger.add(
         sink=log_dir / "log_{time}.log",
-        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function} - {message}",
+        format=_file_format,
         rotation="5 MB",
         retention="7 days",
         compression="zip",

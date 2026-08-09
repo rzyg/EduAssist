@@ -1,7 +1,10 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from loguru import logger
-import tempfile
 import os
+import tempfile
+
+from fastapi import APIRouter, UploadFile, File, Form
+from loguru import logger
+
+from core.errors import AppError
 
 # 创建路由器实例
 router = APIRouter(
@@ -32,13 +35,13 @@ def transcript(
     try:
         # 验证分数线参数：必须提供且只能提供一个
         if lineSheet and lineJSON:
-            raise HTTPException(
+            raise AppError(
                 status_code=400,
                 detail="分数线表格和 JSON 文本不能同时提供，请选择其中一种方式",
             )
 
         if not lineSheet and not lineJSON:
-            raise HTTPException(
+            raise AppError(
                 status_code=400, detail="必须提供分数线表格或 JSON 文本其中之一"
             )
 
@@ -46,7 +49,7 @@ def transcript(
         if lineJSON:
             MAX_JSON_SIZE = 100 * 1024  # 100 KB
             if len(lineJSON) > MAX_JSON_SIZE:
-                raise HTTPException(
+                raise AppError(
                     status_code=400, detail="分数线 JSON 数据过大（上限 100KB）"
                 )
 
@@ -84,12 +87,6 @@ def transcript(
 
         return {"output_path": str(output_path)}
 
-    except HTTPException:
-        # 直接抛出的 HTTP 异常
-        raise
-    except Exception as e:
-        logger.error(f"处理失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
         if tmp_score_path and os.path.exists(tmp_score_path):
@@ -120,13 +117,13 @@ def analysis(
     try:
         # 验证分数线参数：必须提供且只能提供一个
         if lineSheet and lineJSON:
-            raise HTTPException(
+            raise AppError(
                 status_code=400,
                 detail="分数线表格和 JSON 文本不能同时提供，请选择其中一种方式",
             )
 
         if not lineSheet and not lineJSON:
-            raise HTTPException(
+            raise AppError(
                 status_code=400, detail="必须提供分数线表格或 JSON 文本其中之一"
             )
 
@@ -134,7 +131,7 @@ def analysis(
         if lineJSON:
             MAX_JSON_SIZE = 100 * 1024  # 100 KB
             if len(lineJSON) > MAX_JSON_SIZE:
-                raise HTTPException(
+                raise AppError(
                     status_code=400, detail="分数线 JSON 数据过大（上限 100KB）"
                 )
 
@@ -187,12 +184,6 @@ def analysis(
 
         return {"output_path": str(output_path)}
 
-    except HTTPException:
-        # 直接抛出的 HTTP 异常
-        raise
-    except Exception as e:
-        logger.error(f"处理失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         # 清理临时文件
         if tmp_score_path and os.path.exists(tmp_score_path):
@@ -209,7 +200,7 @@ def save_upload_file(scoreSheet: UploadFile) -> str:
     """
     # 检查文件名是否存在
     if not scoreSheet.filename:
-        raise HTTPException(status_code=400, detail="文件名不能为空")
+        raise AppError(status_code=400, detail="文件名不能为空")
 
     suffix = os.path.splitext(scoreSheet.filename)[1]
     # 如果没有扩展名，默认使用 .xlsx
