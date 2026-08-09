@@ -13,7 +13,7 @@ const showRestartOverlay = ref(false)
 const restartStatus = ref('')
 
 const serverHost = ref('')
-const serverPort = ref(8000)
+const serverPort = ref(7410)
 const devMode = ref(false)
 const pathOutput = ref('')
 const pathData = ref('')
@@ -21,7 +21,7 @@ const pathLogs = ref('')
 
 // 保存原始值，用于检测是否变更
 let origHost = ''
-let origPort = 8000
+let origPort = 7410
 let origDevMode = false
 let origOutput = ''
 let origData = ''

@@ -368,7 +368,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 fn get_backend_url(state: tauri::State<BackendProcess>) -> Result<String, String> {
     // 开发者调试模式（tauri dev）：固定使用默认地址
     if tauri::is_dev() {
-        return Ok("http://127.0.0.1:8000".to_string());
+        return Ok("http://127.0.0.1:7410".to_string());
     }
 
     // 生产模式：从安装目录 config.yaml 读取 server.host/port，缺失时回退默认
@@ -385,7 +385,7 @@ fn get_backend_url(state: tauri::State<BackendProcess>) -> Result<String, String
         .as_ref()
         .and_then(|c| c.server.as_ref())
         .and_then(|s| s.port)
-        .unwrap_or(8000);
+        .unwrap_or(7410);
 
     Ok(format!("http://{}:{}", host, port))
 }

@@ -3,14 +3,14 @@
  *
  * - 地址解析：Tauri 环境通过 `invoke('get_backend_url')` 从 Rust 端获取
  *   （Rust 端按 dev / 生产自动切换，见 src-tauri/src/lib.rs）；
- *   非 Tauri 环境（纯 vite 调试）回退默认值 http://127.0.0.1:8000。
+ *   非 Tauri 环境（纯 vite 调试）回退默认值 http://127.0.0.1:7410。
  * - 请求封装：apiFetch / apiGet / apiPost / apiUpload 统一注入 Bearer Token、
  *   拼接基础地址，并默认带超时。
  */
 let _base: string | null = null
 
 /** 默认后端地址（开发者调试模式 / 非 Tauri 环境回退值） */
-const DEFAULT_BASE = 'http://127.0.0.1:8000'
+const DEFAULT_BASE = 'http://127.0.0.1:7410'
 
 /** 请求默认超时（毫秒），0 表示不设超时 */
 const DEFAULT_TIMEOUT = 15000
