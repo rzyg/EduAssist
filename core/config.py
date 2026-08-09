@@ -14,7 +14,7 @@ CONFIG_FILE = BASE_DIR / "config.yaml"
 DEFAULT_CONFIG = {
     "server": {
         "host": "127.0.0.1",
-        "port": 8000,
+        "port": 7410,
     },
     "paths": {
         "output": "output",
