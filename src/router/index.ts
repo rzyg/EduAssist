@@ -27,9 +27,13 @@ const router = createRouter({
             name: 'setting',
             component: () => import('../pages/setting.vue')
         }, {
-            path: '/fuck-the-online-class',
-            name: 'fuck-the-online-class',
-            component: () => import('../pages/construction.vue')
+            path: '/online-class',
+            name: 'online-class',
+            component: () => import('../pages/onlineclass/index.vue')
+        }, {
+            path: '/online-class/configs',
+            name: 'onlineclass-configs',
+            component: () => import('../pages/onlineclass/configs.vue')
         }, {
             path: '/merge',
             name: 'merge',

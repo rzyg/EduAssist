@@ -6,14 +6,14 @@ def _console_format(record: dict) -> str:
     base = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>"
+        "<cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>\n"
     )
-    return base + "\n{exception}" if record["exception"] else base
+    return base + "{exception}" if record["exception"] else base
 
 
 def _file_format(record: dict) -> str:
-    base = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function} - {message}"
-    return base + "\n{exception}" if record["exception"] else base
+    base = "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function} - {message}\n"
+    return base + "{exception}" if record["exception"] else base
 
 
 def setup_logging():

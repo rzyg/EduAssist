@@ -37,6 +37,9 @@ dist/
 build/
 *.whl
 
+# Vite
+.vite/
+
 # Build outputs
 dist
 dist-ssr
