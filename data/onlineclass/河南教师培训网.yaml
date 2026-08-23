@@ -2,7 +2,7 @@
 # 参考 data/browser-profile 已有的 teachersedu.cn 登录流程组织
 global:
   retry: 2            # 关键动作失败重试次数
-  headless: true     # 有界面模式(加载插件需要)
+  headless: false
   channel: msedge     # 浏览器通道
   start_url: "https://www.teachersedu.cn"
 
@@ -14,7 +14,6 @@ env:
   login_btn_selector: "span.text_5"
   captcha_element_selector: ".text_2"
   index_path: "/my/index"
-  playbackRate: 10
 # 检测是否已登录(通过浏览器持久化 profile 中的登录态)
 check_login:
   - steps:
@@ -155,7 +154,7 @@ learning_loop:
                   if (videos.length > 0) {
                     videos.forEach(v => {
                       try {
-                        v.playbackRate = ${playbackRate};
+                        v.playbackRate = ${playback_rate};
                         messages.push('已为视频设置倍速: ' + v.playbackRate);
                       } catch (e) {
                         messages.push('设置视频倍速失败: ' + e.message);
