@@ -106,22 +106,23 @@ jobs:
         run: |
           set -euo pipefail
           SSH_KEY_PATH="$HOME/.ssh/deploy_key"
-          SSH_OPTS="-p ${{ secrets.DEPLOY_PORT }} -i $SSH_KEY_PATH -o StrictHostKeyChecking=no -o ConnectTimeout=15"
+          SSH_OPTS="-p ${{ secrets.DEPLOY_PORT }} -e 'ssh -i $SSH_KEY_PATH -o StrictHostKeyChecking=no -o ConnectTimeout=15'"
           REMOTE_DIR="/home/ecs-user/www/eduassist/.onlineclass-configs"
           REMOTE="${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
 
           # 确保远程目录存在
-          ssh $SSH_OPTS "$REMOTE" "mkdir -p '$REMOTE_DIR'"
+          ssh -i $SSH_KEY_PATH -p ${{ secrets.DEPLOY_PORT }} -o StrictHostKeyChecking=no "$REMOTE" "mkdir -p '$REMOTE_DIR'"
 
-          # 上传所有 YAML（数组展开，文件名含空格也安全；目标为目录，不带子目录结构）
+          # 使用 rsync 上传（自动处理文件名编码）
           mapfile -t YAML_FILES < /tmp/yaml_files.txt
           if [ ${#YAML_FILES[@]} -gt 0 ]; then
-            scp $SSH_OPTS "${YAML_FILES[@]}" "$REMOTE:$REMOTE_DIR/"
+            rsync -avz --rsh="ssh -i $SSH_KEY_PATH -p ${{ secrets.DEPLOY_PORT }} -o StrictHostKeyChecking=no" \
+              "${YAML_FILES[@]}" "$REMOTE:$REMOTE_DIR/"
           fi
 
-          # 上传清单
-          scp $SSH_OPTS .filelist.json "$REMOTE:$REMOTE_DIR/"
+          rsync -avz --rsh="ssh -i $SSH_KEY_PATH -p ${{ secrets.DEPLOY_PORT }} -o StrictHostKeyChecking=no" \
+            .filelist.json "$REMOTE:$REMOTE_DIR/"
 
-          # 回显远程结果
           COUNT=$(wc -l < /tmp/yaml_files.txt)
-          ssh $SSH_OPTS "$REMOTE" "ls -lh '$REMOTE_DIR' && echo '✅ 部署成功: $COUNT 个 YAML + .filelist.json'"
+          ssh -i $SSH_KEY_PATH -p ${{ secrets.DEPLOY_PORT }} -o StrictHostKeyChecking=no "$REMOTE" \
+            "ls -lh '$REMOTE_DIR' && echo '✅ 部署成功: $COUNT 个 YAML + .filelist.json'"
