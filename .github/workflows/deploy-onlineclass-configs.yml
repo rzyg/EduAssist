@@ -32,7 +32,11 @@ jobs:
         run: |
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
+          # 1. 写入密钥
           printf '%b' "${{ secrets.SSH_PRIVATE_KEY }}" > "$HOME/.ssh/deploy_key"
+          # 2. ★ 关键修复：强制将 CRLF 转换为 LF，并删除行尾空格
+          sed -i 's/\r$//' "$HOME/.ssh/deploy_key"
+          sed -i 's/[[:space:]]*$//' "$HOME/.ssh/deploy_key"
           chmod 600 "$HOME/.ssh/deploy_key"
 
       # ── 收集 YAML 并生成 .filelist.json ──────────────────────────
