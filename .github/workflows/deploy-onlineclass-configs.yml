@@ -1,0 +1,112 @@
+name: Deploy Onlineclass Configs
+
+on:
+  push:
+    branches:
+      - config-files
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: '要部署的分支（默认 config-files）'
+        required: false
+        default: 'config-files'
+        type: string
+
+jobs:
+  deploy-configs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      # ── 检出目标分支（fetch-depth 0 以便按文件计算最后修改时间） ──
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || 'config-files' }}
+          fetch-depth: 0
+
+      # ── 准备 SSH 私钥 ────────────────────────────────────────────
+      - name: Setup SSH key
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%b' "${{ secrets.SSH_PRIVATE_KEY }}" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+
+      # ── 收集 YAML 并生成 .filelist.json ──────────────────────────
+      - name: Collect YAML files and generate .filelist.json
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 1. 收集分支上所有 YAML（排除 .git），后续按文件名平铺上传
+          find . -type f -name '*.yaml' -not -path './.git/*' | sed 's|^\./||' | sort > /tmp/yaml_files.txt
+          if [ ! -s /tmp/yaml_files.txt ]; then
+            echo "::warning::分支上没有 .yaml 文件，本次仅上传 .filelist.json"
+          fi
+
+          # 2. 重名检测：同名文件无法平铺到同一目录，直接失败避免静默覆盖
+          awk -F/ '{print $NF}' /tmp/yaml_files.txt | sort | uniq -d > /tmp/yaml_dups.txt
+          if [ -s /tmp/yaml_dups.txt ]; then
+            echo "::error::检测到同名 YAML，无法平铺上传: $(paste -sd, /tmp/yaml_dups.txt)"
+            exit 1
+          fi
+
+          # 3. 生成 .filelist.json（updateTimestamp 取该文件最后一次提交时间，取不到则用当前时间）
+          python3 - /tmp/yaml_files.txt <<'PYEOF'
+          import json, os, subprocess, sys, time
+
+          now = int(time.time())
+          entries = []
+          with open(sys.argv[1], encoding='utf-8') as fh:
+              for line in fh:
+                  path = line.strip()
+                  if not path:
+                      continue
+                  ts = now
+                  try:
+                      out = subprocess.check_output(
+                          ['git', 'log', '-1', '--format=%ct', '--', path],
+                          text=True, stderr=subprocess.DEVNULL,
+                      ).strip()
+                      if out:
+                          ts = int(out)
+                  except Exception:
+                      pass
+                  entries.append({"filename": os.path.basename(path), "updateTimestamp": str(ts)})
+
+          entries.sort(key=lambda e: e["filename"])
+          with open('.filelist.json', 'w', encoding='utf-8') as fh:
+              json.dump({"filelist": entries}, fh, ensure_ascii=False, indent=2)
+          PYEOF
+
+          echo "=== .filelist.json ==="
+          cat .filelist.json
+
+      # ── 平铺推送 YAML + .filelist.json 到服务器 ──────────────────
+      - name: Deploy YAML files and .filelist.json to server
+        shell: bash
+        run: |
+          set -euo pipefail
+          SSH_KEY_PATH="$HOME/.ssh/deploy_key"
+          SSH_OPTS="-p ${{ secrets.DEPLOY_PORT }} -i $SSH_KEY_PATH -o StrictHostKeyChecking=no -o ConnectTimeout=15"
+          REMOTE_DIR="/home/ecs-user/www/eduassist/.onlineclass-configs"
+          REMOTE="${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}"
+
+          # 确保远程目录存在
+          ssh $SSH_OPTS "$REMOTE" "mkdir -p '$REMOTE_DIR'"
+
+          # 上传所有 YAML（数组展开，文件名含空格也安全；目标为目录，不带子目录结构）
+          mapfile -t YAML_FILES < /tmp/yaml_files.txt
+          if [ ${#YAML_FILES[@]} -gt 0 ]; then
+            scp $SSH_OPTS "${YAML_FILES[@]}" "$REMOTE:$REMOTE_DIR/"
+          fi
+
+          # 上传清单
+          scp $SSH_OPTS .filelist.json "$REMOTE:$REMOTE_DIR/"
+
+          # 回显远程结果
+          COUNT=$(wc -l < /tmp/yaml_files.txt)
+          ssh $SSH_OPTS "$REMOTE" "ls -lh '$REMOTE_DIR' && echo '✅ 部署成功: $COUNT 个 YAML + .filelist.json'"
