@@ -1,0 +1,227 @@
+# 在线课程自动化示例剧本
+# 参考 data/browser-profile 已有的 teachersedu.cn 登录流程组织
+global:
+  retry: 2            # 关键动作失败重试次数
+  headless: true     # 有界面模式(加载插件需要)
+  channel: msedge     # 浏览器通道
+  start_url: "https://www.teachersedu.cn"
+
+env:
+  base_url: "https://www.teachersedu.cn"
+  account_selector: "input[placeholder='请输入账号']"
+  password_selector: "input[placeholder='请输入密码']"
+  captcha_selector: "input[placeholder='请输入验证码']"
+  login_btn_selector: "span.text_5"
+  captcha_element_selector: ".text_2"
+  index_path: "/my/index"
+  playbackRate: 10
+# 检测是否已登录(通过浏览器持久化 profile 中的登录态)
+check_login:
+  - steps:
+      - action: navigate
+        url: "https://www.teachersedu.cn"
+      - action: sleep
+        seconds: 2
+      - action: get_url
+        save_as: current_url
+      - action: if
+        condition: "current_url != '${base_url}/login'"
+        then:
+          - action: set_var
+            name: needs_login
+            value: false
+          - action: log
+            message: "已登录"
+        else:
+          - action: set_var
+            name: needs_login
+            value: true
+          - action: log
+            message: "需要登录"
+          - action: call_section
+            section: "login"
+
+# 登录(仅在需要时执行)
+login:
+  - steps:
+      - action: if
+        condition: "needs_login"
+        then:
+          - action: navigate
+            url: "${base_url}/login"
+          - action: wait_for_selector
+            selector: "${account_selector}"
+          - action: fill
+            selector: "${account_selector}"
+            value: "${username}"
+          - action: fill
+            selector: "${password_selector}"
+            value: "${password}"
+          - action: get_text
+            selector: "${captcha_element_selector}"
+            save_as: captcha
+          - action: fill
+            selector: "${captcha_selector}"
+            value: "${captcha}"
+          - action: click
+            selector: "${login_btn_selector}"
+          - action: sleep
+            seconds: 5
+          - action: call_section
+            section: "check_login"
+
+# 学习主循环：翻到下一页，直到没有下一页
+learning_loop:
+  while:
+    key: learning
+    max_iterations: 200   # 防死循环保护
+    wait_between: 2       # 每轮间隔(秒)
+    condition: "has_next" # has_next 为真则继续
+  steps:
+    - action: navigate
+      url: "${base_url}${index_path}"
+    - action: click
+      selector: "a:has-text('进入项目')"
+    - action: get_attribute
+      selector: "a:has-text('去学习')"
+      attribute: "href"
+      save_as: course_url
+    - action: navigate
+      url: "${base_url}${course_url}"
+    - action: sleep
+      seconds: 3
+
+    # 课程列表页，检查是否有更多课程（has_next）
+    - action: count_elements
+      selector: "a:has-text('去学习')"
+      save_as: has_next
+    - action: get_attribute
+      selector: "a:has-text('去学习')"
+      attribute: "href"
+      save_as: course_url
+    - action: navigate
+      url: "${base_url}${course_url}"
+
+    # 获取所有未开始/学习中的任务链接
+    - action: execute_script
+      script: |
+        (() => {
+          const links = document.querySelectorAll('li.task-item:has(i[title="未开始"], i[title="学习中"]) a.title');
+          return Array.from(links).map(a => a.getAttribute('href'));
+        })()
+      save_as: task_urls
+
+    # 遍历处理每个任务项
+    - for_each:
+        items: "${task_urls}"
+        var: task_url
+        wait_between: 5
+      steps:
+        - action: log
+          message: "任务链接: ${task_url}"
+
+        - action: navigate
+          url: "${base_url}${task_url}"
+
+        - action: sleep
+          seconds: 10
+
+        # 检测是否有视频元素
+        - action: count_elements
+          selector: "video"
+          save_as: video_count
+          timeout: 10000
+
+        - action: if
+          condition: "video_count > 0"
+          then:
+            # 视频任务处理
+            - action: sleep
+              seconds: 5
+
+            # 点击播放按钮
+            - action: execute_script
+              script: |
+                const button = document.querySelector('.vjs-big-play-button');
+                if (button) button.click();
+                const paused_button = document.querySelector('.vjs-play-control.vjs-control.vjs-button.vjs-paused');
+                if (paused_button) paused_button.click();
+
+            - action: execute_script
+              script: |
+                (() => {
+                  const messages = [];
+                  const videos = document.querySelectorAll('video');
+                  if (videos.length > 0) {
+                    videos.forEach(v => {
+                      try {
+                        v.playbackRate = ${playbackRate};
+                        messages.push('已为视频设置倍速: ' + v.playbackRate);
+                      } catch (e) {
+                        messages.push('设置视频倍速失败: ' + e.message);
+                      }
+                    });
+                  } else {
+                    messages.push('当前页面未找到视频元素。');
+                  }
+                  return messages.join('\n');
+                })()
+              save_as: speed_log
+
+            - action: log
+              message: "${speed_log}"
+
+            # 初始化循环控制变量
+            - action: set_var
+              name: has_remaining
+              value: true
+
+            # 循环检测剩余学习时间
+            - while:
+                key: remaining_check
+                max_iterations: 200
+                wait_between: 2
+                condition: "has_remaining"
+              steps:
+                # 1. 检查剩余时间元素是否存在
+                - action: count_elements
+                  selector: "p.js-not-finish-tips"
+                  save_as: tips_count
+                  timeout: 5000
+
+                - action: if
+                  condition: "tips_count == 0"
+                  then:
+                    - action: log
+                      message: "剩余时间元素消失，学习已完成"
+                    - action: set_var
+                      name: has_remaining
+                      value: false
+                  else:
+                    - action: sleep
+                      seconds: 30
+          else:
+            # 非视频任务（可能是文档）
+            - action: sleep
+              seconds: 2
+
+            - action: count_elements
+              selector: "#viewerContainer"
+              save_as: has_doc
+
+            - action: if
+              condition: "has_doc > 0"
+              then:
+                - action: log
+                  message: "文档课"
+                - action: scroll
+                  selector: ".page:last-child"
+                - action: log
+                  message: "文档课完成"
+                - action: sleep
+                  seconds: 5
+
+# 收尾（可选板块）
+cleanup:
+  - action: log
+    message: "学习任务结束"
