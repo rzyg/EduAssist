@@ -32,12 +32,23 @@ jobs:
         run: |
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          # 1. 写入密钥
-          printf '%b' "${{ secrets.SSH_PRIVATE_KEY }}" > "$HOME/.ssh/deploy_key"
-          # 2. ★ 关键修复：强制将 CRLF 转换为 LF，并删除行尾空格
-          sed -i 's/\r$//' "$HOME/.ssh/deploy_key"
-          sed -i 's/[[:space:]]*$//' "$HOME/.ssh/deploy_key"
+
+          # Write the key and normalize line endings
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | \
+            sed 's/\r$//' | \
+            sed 's/[[:space:]]*$//' > "$HOME/.ssh/deploy_key"
+
+          # Ensure proper formatting (key must end with newline, no blank lines in PEM block)
           chmod 600 "$HOME/.ssh/deploy_key"
+
+          # Validate the key format
+          if ! ssh-keygen -l -f "$HOME/.ssh/deploy_key" > /dev/null 2>&1; then
+            echo "::error::SSH key validation failed"
+            exit 1
+          fi
+
+          # Add SSH host key to known_hosts before connecting
+          ssh-keyscan -p ${{ secrets.DEPLOY_PORT }} ${{ secrets.DEPLOY_HOST }} >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
 
       # ── 收集 YAML 并生成 .filelist.json ──────────────────────────
       - name: Collect YAML files and generate .filelist.json
